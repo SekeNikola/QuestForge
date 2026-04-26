@@ -46,7 +46,16 @@ ICON RULES — pick an icon that literally matches the object, not a category:
   DO NOT use 💰 money bag — use 🪙 coin pile or 📦 chest instead.
 
 Update sceneObjects when objects are used/removed. Distant observers: proximity "distant" — legend only.
-The <scene> tag shows exactly what the player sees. Always reference it for environment questions.`
+The <scene> tag shows exactly what the player sees. Always reference it for environment questions.
+
+━━━ XP AWARDS (always active) ━━━
+Award XP via [MEMORY_UPDATE: {"xpGained": N}] when the player:
+  Defeats an enemy: 50–150 XP (scale with danger)
+  Completes a quest: 150–300 XP
+  Discovers a new location: 25–50 XP
+  Solves a puzzle or major skill check: 50–100 XP
+  Major story milestone: 200–500 XP
+Always include xpGained in MEMORY_UPDATE when one of these occurs. Never award XP for minor conversation.`
 
 const DND_RULES = `
 D&D 5E MECHANICS — Follow these rules exactly. Never skip a check by narrating the outcome yourself.

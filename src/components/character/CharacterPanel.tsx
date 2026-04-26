@@ -126,6 +126,30 @@ function CharacterCard({ character }: { character: Character }) {
         <HPBar current={character.hp} max={character.maxHp} label="HP" />
       </div>
 
+      {/* XP bar */}
+      {(() => {
+        const XP = [0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000]
+        const xp = character.xp ?? 0
+        const lvl = character.level
+        const cur = XP[lvl - 1] ?? 0
+        const next = XP[lvl] ?? XP[XP.length - 1]!
+        const pct = lvl >= 10 ? 100 : Math.min(100, ((xp - cur) / (next - cur)) * 100)
+        return (
+          <div className="px-3 pb-2">
+            <div className="flex justify-between text-[10px] text-gray-600 mb-0.5">
+              <span>XP</span>
+              <span>{lvl >= 10 ? 'MAX' : `${xp} / ${next}`}</span>
+            </div>
+            <div className="h-1 bg-[#0f0f1a] rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #7c3aed, #a855f7)' }}
+              />
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Stats */}
       <div className="px-3 pb-2">
         <div className="grid grid-cols-6 gap-1">

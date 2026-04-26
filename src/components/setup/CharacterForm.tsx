@@ -69,6 +69,7 @@ export function buildCharacterFromDraft(draft: Partial<Character>): Character {
     backstory: draft.backstory ?? '',
     portraitUrl: draft.portraitUrl ?? '',
     level: 1,
+    xp: 0,
     hp: maxHp,
     maxHp,
     ac: cls === 'Fighter' ? 16 : cls === 'Rogue' ? 14 : 12,

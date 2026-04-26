@@ -59,9 +59,11 @@ export function parseAIResponse(raw: string): ParsedAIResponse {
   let memoryPatch: ParsedAIResponse['memoryPatch'] = null
   const { extracted: memJson, cleaned: afterMem } = stripTaggedBlock(text, 'MEMORY_UPDATE')
   text = afterMem
+  let xpGained = 0
   if (memJson) {
     try {
       const raw = JSON.parse(memJson) as Record<string, unknown>
+      if (typeof raw.xpGained === 'number' && raw.xpGained > 0) xpGained = raw.xpGained
       memoryPatch = raw as Partial<
         Pick<GameState, 'currentLocation' | 'quests' | 'npcs' | 'sessionEvents' | 'sceneObjects'>
       >
@@ -152,5 +154,5 @@ export function parseAIResponse(raw: string): ParsedAIResponse {
   // ─── Clean up any remaining stray brackets from malformed tags ────────────
   const narrative = text.replace(/\[\w+:[^\]]{0,20}$/gm, '').trim()
 
-  return { narrative, actions, memoryPatch, combatEntry, combatStart, skillCheck }
+  return { narrative, actions, memoryPatch, xpGained, combatEntry, combatStart, skillCheck }
 }

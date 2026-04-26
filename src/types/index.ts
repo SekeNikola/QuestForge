@@ -39,6 +39,7 @@ export interface Character {
   backstory: string
   portraitUrl: string           // Pollinations.ai URL or placeholder data URI
   level: number
+  xp: number
   hp: number
   maxHp: number
   ac: number
@@ -235,6 +236,7 @@ export interface ParsedAIResponse {
   narrative: string
   actions: string[]
   memoryPatch: Partial<Pick<GameState, 'currentLocation' | 'quests' | 'npcs' | 'sessionEvents' | 'sceneObjects'>> | null
+  xpGained: number
   combatEntry: Omit<CombatEntry, 'id' | 'timestamp'> | null
   combatStart: boolean
   skillCheck: SkillCheck | null

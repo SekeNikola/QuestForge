@@ -50,6 +50,7 @@ interface GameStore extends GameState {
   addSessionEvent: (event: string) => void
   updateMemory: (patch: Partial<Pick<GameState, 'currentLocation' | 'quests' | 'npcs' | 'sessionEvents' | 'sceneObjects'>>) => void
   setSceneObjects: (objects: SceneObject[]) => void
+  grantXp: (amount: number) => boolean  // returns true if leveled up
   startCombat: (enemies: Combatant[]) => void
   resolveCombatTurn: (entry: CombatEntry) => void
   endCombat: () => void
@@ -131,6 +132,27 @@ export const useGameStore = create<GameStore>()(
 
       setSceneObjects: (objects) => {
         set({ sceneObjects: objects, updatedAt: Date.now() })
+      },
+
+      grantXp: (amount) => {
+        const XP_THRESHOLDS = [0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000]
+        let leveledUp = false
+        set((state) => {
+          const players = state.players.map((p) => {
+            const newXp = (p.xp ?? 0) + amount
+            const oldLevel = p.level
+            const newLevel = Math.min(10, XP_THRESHOLDS.filter(t => newXp >= t).length)
+            if (newLevel > oldLevel) {
+              leveledUp = true
+              const conMod = Math.floor(((p.stats.con ?? 10) - 10) / 2)
+              const hpGain = Math.max(1, conMod + 3)
+              return { ...p, xp: newXp, level: newLevel, maxHp: p.maxHp + hpGain, hp: p.hp + hpGain }
+            }
+            return { ...p, xp: newXp }
+          })
+          return { players, updatedAt: Date.now() }
+        })
+        return leveledUp
       },
 
       startCombat: (enemies) => {

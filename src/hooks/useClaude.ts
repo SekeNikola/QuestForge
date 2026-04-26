@@ -89,6 +89,15 @@ export function useClaude() {
         gameStore.updateMemory(parsed.memoryPatch)
       }
 
+      if (parsed.xpGained > 0) {
+        const leveledUp = gameStore.grantXp(parsed.xpGained)
+        const player = useGameStore.getState().players[0]
+        const xpLine = leveledUp && player
+          ? `⬆️ Level Up! You are now level ${player.level}. (+${parsed.xpGained} XP)`
+          : `+${parsed.xpGained} XP`
+        gameStore.appendMessage('assistant', xpLine)
+      }
+
       gameStore.appendMessage('assistant', parsed.narrative)
 
       if (response.usage) {

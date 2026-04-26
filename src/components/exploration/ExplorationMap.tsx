@@ -171,7 +171,7 @@ export function ExplorationMap({
           />
         )}
 
-        {/* Grid lines */}
+        {/* Grid lines + fog of war */}
         <div
           className="absolute inset-0"
           style={{
@@ -180,9 +180,22 @@ export function ExplorationMap({
             gridTemplateRows: `repeat(${GRID_SIZE}, ${CELL}px)`,
           }}
         >
-          {Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, i) => (
-            <div key={i} className="border border-white/[0.05]" />
-          ))}
+          {Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, i) => {
+            const cx = i % GRID_SIZE
+            const cy = Math.floor(i / GRID_SIZE)
+            const dist = Math.max(Math.abs(cx - PLAYER_POS.x), Math.abs(cy - PLAYER_POS.y))
+            const fogOpacity = dist <= 3 ? 0 : dist === 4 ? 0.45 : dist === 5 ? 0.72 : 0.88
+            return (
+              <div key={i} className="relative border border-white/[0.05]">
+                {fogOpacity > 0 && (
+                  <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{ background: `rgba(5,5,18,${fogOpacity})` }}
+                  />
+                )}
+              </div>
+            )
+          })}
         </div>
 
         {/* Scene object tokens */}
