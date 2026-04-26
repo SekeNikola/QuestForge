@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+* { box-sizing: border-box; }
+body { margin: 0; background: #0f0f1a; color: white; }
+#root { min-height: 100vh; }
+
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
+@keyframes dice-roll {
+  0%   { transform: rotate(0deg) scale(0.6); opacity: 0.3; }
+  30%  { transform: rotate(200deg) scale(1.2); opacity: 1; }
+  60%  { transform: rotate(320deg) scale(0.95); opacity: 1; }
+  100% { transform: rotate(360deg) scale(1); opacity: 1; }
+}
+.dice-rolling { animation: dice-roll 0.55s cubic-bezier(0.22, 1, 0.36, 1); }
