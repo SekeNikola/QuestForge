@@ -78,15 +78,16 @@ export function ThemePicker({ selected, onSelect }: ThemePickerProps) {
         role="radiogroup"
         aria-label="Game theme selection"
         onKeyDown={handleKeyDown}
-        className="grid grid-cols-5 gap-4"
+        className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4"
       >
-        {THEMES.map((t) => (
-          <ThemeCard
-            key={t.theme}
-            {...t}
-            selected={selected === t.theme}
-            onSelect={onSelect}
-          />
+        {THEMES.map((t, i) => (
+          <div key={t.theme} className={i === THEMES.length - 1 ? 'col-span-2 sm:col-span-1' : ''}>
+            <ThemeCard
+              {...t}
+              selected={selected === t.theme}
+              onSelect={onSelect}
+            />
+          </div>
         ))}
       </div>
     </div>

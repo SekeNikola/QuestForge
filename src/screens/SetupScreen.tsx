@@ -108,14 +108,14 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
   const hasApiKey = !!getApiKey()
 
   return (
-    <div className="min-h-screen bg-[#0b0b1a] flex flex-col items-center px-6 py-10 relative overflow-hidden">
+    <div className="min-h-dvh bg-[#0b0b1a] flex flex-col items-center px-4 sm:px-6 py-8 sm:py-10 relative overflow-hidden">
       {/* Background glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-72 bg-violet-900/20 rounded-full blur-3xl pointer-events-none" />
 
       {/* Top-right: token usage + API key */}
       <div className="fixed top-4 right-4 z-30 flex items-center gap-2" ref={keyPanelRef}>
         {/* All-time token badge */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-[#12122a] border border-[#252545] text-xs font-mono text-gray-400">
+        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-[#12122a] border border-[#252545] text-xs font-mono text-gray-400">
           <span className="text-gray-500">all-time</span>
           <span className="text-gray-300">{(allTimeInputTokens + allTimeOutputTokens).toLocaleString()} tok</span>
           <span className="text-[#252545]">·</span>
@@ -183,7 +183,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
       <div className="w-full max-w-[60rem] relative z-10">
         {/* Title */}
         <div className="text-center mb-8">
-          <h1 className="text-5xl font-black text-white tracking-tight leading-none">QuestForge</h1>
+          <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight leading-none">QuestForge</h1>
           <p className="text-gray-400 text-sm mt-2">AI-powered solo &amp; family RPG adventures</p>
         </div>
 

@@ -18,6 +18,7 @@ export interface GridObstacle {
   x: number
   y: number
   icon: string
+  name?: string
 }
 
 export type CombatPhase = 'idle' | 'player' | 'enemy' | 'done'
@@ -53,7 +54,13 @@ export function hasCover(pos: GridPos, obs: GridObstacle[]): boolean {
 
 // Generate random obstacles for the middle band of the map
 function generateObstacles(): GridObstacle[] {
-  const icons = ['🪨', '🛢', '📦', '🪵', '⬛']
+  const obstacles: Array<{ icon: string; name: string }> = [
+    { icon: '🪨', name: 'Rock' },
+    { icon: '🛢', name: 'Barrel' },
+    { icon: '📦', name: 'Crate' },
+    { icon: '🪵', name: 'Log' },
+    { icon: '⬛', name: 'Pillar' },
+  ]
   const count = 4 + Math.floor(Math.random() * 3)  // 4–6
   const result: GridObstacle[] = []
   let attempts = 0
@@ -65,7 +72,8 @@ function generateObstacles(): GridObstacle[] {
     if (x <= 1 || x >= 6) continue
     if ((x <= 1 && y >= 6) || (x >= 6 && y <= 1)) continue
     if (result.some(o => o.x === x && o.y === y)) continue
-    result.push({ x, y, icon: icons[Math.floor(Math.random() * icons.length)] })
+    const obs = obstacles[Math.floor(Math.random() * obstacles.length)]!
+    result.push({ x, y, icon: obs.icon, name: obs.name })
   }
   return result
 }

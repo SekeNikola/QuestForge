@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react'
 import type { SceneObject, SceneProximity, SceneDirection, Theme } from '../../types/index'
 
 const GRID_SIZE = 8
-const CELL = 40
-const SIZE = CELL * GRID_SIZE
 
 const PLAYER_POS = { x: 3, y: 5 }
 
@@ -113,6 +111,7 @@ interface Props {
   playerMaxHp: number
   playerPortrait?: string
   theme: Theme
+  mapSize?: number
 }
 
 export function ExplorationMap({
@@ -123,7 +122,10 @@ export function ExplorationMap({
   playerMaxHp,
   playerPortrait,
   theme,
+  mapSize = 320,
 }: Props) {
+  const CELL = Math.floor(mapSize / GRID_SIZE)
+  const SIZE = CELL * GRID_SIZE
   const [imgLoaded, setImgLoaded] = useState(false)
   const [imgError, setImgError] = useState(false)
   const [playerImgLoaded, setPlayerImgLoaded] = useState(false)

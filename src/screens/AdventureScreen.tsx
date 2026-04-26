@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Settings, Swords, Cloud, CloudOff, House } from 'lucide-react'
+import { Settings, Swords, Cloud, CloudOff, House, MessageSquare, UserRound, Compass } from 'lucide-react'
 import { useGameStore } from '../store/gameStore'
 import { useSettingsStore } from '../store/settingsStore'
 import { useClaude } from '../hooks/useClaude'
@@ -127,11 +127,17 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
   const [mapUrl, setMapUrl] = useState('')
   const [combatLog, setCombatLog] = useState<string[]>([])
   const [sidebarWidth, setSidebarWidth] = useState(320)
+  const [mobileTab, setMobileTab] = useState<'chat' | 'character' | 'map'>('chat')
+  const [mobileMapSize, setMobileMapSize] = useState(() => window.innerWidth)
+  const [unreadMessages, setUnreadMessages] = useState(0)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const locationMapCache = useRef<Map<string, string>>(new Map())
   const hasAutoStarted = useRef(false)
   const isDraggingRef = useRef(false)
   const dragStartRef = useRef({ x: 0, width: 0 })
+  const prevLocationRef = useRef<string>('')
+  const prevInCombatRef = useRef(false)
+  const lastReadRef = useRef(0)
 
   const game = useGameStore()
   const { kidsMode } = useSettingsStore()
@@ -213,6 +219,16 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
     }
   }, [])
 
+  // Notify player when location changes during combat
+  useEffect(() => {
+    const loc = game.currentLocation
+    if (!loc) return
+    if (prevLocationRef.current && prevLocationRef.current !== loc) {
+      game.appendMessage('assistant', `📍 Location changed: **${loc}**`)
+    }
+    prevLocationRef.current = loc
+  }, [game.currentLocation]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Generate exploration map when location changes (cached per location)
   useEffect(() => {
     if (!game.currentLocation || !game.theme || inCombat) return
@@ -236,6 +252,38 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     }
   }, [messageCount])
+
+  // Mobile: track window width for map sizing
+  useEffect(() => {
+    const update = () => setMobileMapSize(window.innerWidth)
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+
+  // Mobile: auto-switch tabs on combat state transitions
+  useEffect(() => {
+    if (inCombat && !prevInCombatRef.current) setMobileTab('map')
+    if (!inCombat && prevInCombatRef.current) setMobileTab('chat')
+    prevInCombatRef.current = inCombat
+  }, [inCombat])
+
+  // Mobile: unread message badge on chat tab
+  useEffect(() => {
+    if (mobileTab === 'chat') {
+      lastReadRef.current = game.messages.length
+      setUnreadMessages(0)
+    } else {
+      setUnreadMessages(Math.max(0, game.messages.length - lastReadRef.current))
+    }
+  }, [game.messages.length, mobileTab])
+
+  // On resume: combat grid state is not persisted — clear stale combat flag
+  useEffect(() => {
+    if (game.combatState?.active) {
+      game.endCombat()
+      game.appendMessage('assistant', '⚔️ Your previous battle was interrupted. You regroup and continue.')
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-send opening scene when adventure begins fresh
   useEffect(() => {
@@ -325,69 +373,170 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
     }
   }, [gridPhase, inCombat])
 
+  // ── Shared sub-panels ────────────────────────────────────────────────────
+  const playerCoverActive = (() => {
+    const pl = units.find(u => u.isPlayer && u.hp > 0)
+    return pl ? hasCover(pl.pos, obstacles) : false
+  })()
+
+  const mapHeader = (
+    <div className="px-3 py-2 border-b border-[#2d2d4e] flex items-center justify-between shrink-0">
+      {inCombat ? (
+        <>
+          <span className="text-xs font-medium text-red-400 uppercase tracking-wider">Battle</span>
+          <div className="flex items-center gap-2">
+            {playerCoverActive && (
+              <span className="text-[10px] text-sky-400 flex items-center gap-1 border border-sky-800/40 bg-sky-900/20 px-1.5 py-0.5 rounded-full">
+                🛡 Cover +2
+              </span>
+            )}
+            <span className="text-xs font-mono text-red-400">Round {combat?.round ?? 1}</span>
+          </div>
+        </>
+      ) : (
+        <>
+          <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Scene</span>
+          <span className="text-[10px] text-gray-600 truncate max-w-40">{game.currentLocation}</span>
+        </>
+      )}
+    </div>
+  )
+
+  const combatActionPanel = inCombat ? (
+    <>
+      <div className="shrink-0 border-t border-[#2d2d4e] px-3 pt-2.5 pb-2">
+        {gridPhase === 'player' && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
+              <span className={`w-2 h-2 rounded-full ${playerMoved ? 'bg-gray-700' : 'bg-emerald-500'}`} />
+              <span className={playerMoved ? 'line-through text-gray-700' : 'text-gray-400'}>Movement</span>
+              <span className="mx-1 text-[#2d2d4e]">·</span>
+              <span className={`w-2 h-2 rounded-full ${playerAttacked ? 'bg-gray-700' : 'bg-orange-500'}`} />
+              <span className={playerAttacked ? 'line-through text-gray-700' : 'text-gray-400'}>Action</span>
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                onClick={handleDodge}
+                disabled={playerAttacked}
+                className={[
+                  'flex flex-col items-center gap-0.5 py-2.5 rounded-xl border text-[11px] font-medium transition-all',
+                  playerDodging
+                    ? 'bg-sky-900/30 border-sky-500 text-sky-300'
+                    : 'bg-[#1a1a2e] border-[#2d2d4e] text-gray-400 hover:border-sky-800 disabled:opacity-30 disabled:cursor-not-allowed',
+                ].join(' ')}
+              >
+                <span>🛡</span><span>Dodge</span>
+              </button>
+              <button
+                onClick={endPlayerTurn}
+                className="flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium bg-[#1a1a2e] hover:bg-[#252540] border border-[#2d2d4e] text-gray-500 hover:text-gray-300 rounded-xl transition-colors"
+              >
+                <span>→</span><span>End Turn</span>
+              </button>
+            </div>
+            {validTargets.length > 0 && !playerAttacked && (
+              <p className="text-[10px] text-yellow-400/70 text-center">Enemy in range — tap to attack</p>
+            )}
+          </div>
+        )}
+        {gridPhase === 'enemy' && (
+          <div className="flex items-center gap-2 py-2 text-xs text-red-400">
+            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            Enemy thinking...
+          </div>
+        )}
+        {gridPhase === 'done' && (
+          <div className="text-center text-xs text-gray-500 py-2">Combat ended</div>
+        )}
+      </div>
+      {rolls.length > 0 && (
+        <div className="shrink-0 border-t border-[#2d2d4e] overflow-y-auto" style={{ maxHeight: 120 }}>
+          <DiceRoller rolls={rolls} />
+        </div>
+      )}
+      {combatLog.length > 0 && (
+        <div className="shrink-0 border-t border-[#2d2d4e] px-3 py-2 space-y-0.5 overflow-y-auto" style={{ maxHeight: 80 }}>
+          {combatLog.slice(-5).map((entry, i) => {
+            const isPlayer = entry.startsWith('You')
+            const isHit = entry.includes('Hit') || entry.includes('damage')
+            const isMiss = entry.includes('Miss') || entry.includes('Dodge')
+            return (
+              <p key={i} className={['text-[11px] leading-snug', isPlayer ? 'text-violet-300' : isMiss ? 'text-gray-500' : isHit ? 'text-red-400' : 'text-gray-400'].join(' ')}>
+                {entry}
+              </p>
+            )
+          })}
+        </div>
+      )}
+    </>
+  ) : null
+
+  const sceneObjectList = !inCombat && game.sceneObjects && game.sceneObjects.filter(o => o.proximity !== 'distant').length > 0 ? (
+    <div className="shrink-0 border-t border-[#2d2d4e] px-3 py-2">
+      <p className="text-[9px] text-gray-600 uppercase tracking-wider mb-1.5">Visible</p>
+      <div className="flex flex-wrap gap-1.5">
+        {game.sceneObjects.filter(o => o.proximity !== 'distant').map(obj => (
+          <div key={obj.id} className="flex items-center gap-1 text-[10px] text-gray-500">
+            <span>{obj.icon}</span>
+            <span className={obj.interacted ? 'line-through text-gray-700' : ''}>{obj.name}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  ) : null
+
+  const errorBanner = error ? (
+    <div className="mx-4 mt-3 px-4 py-2.5 bg-red-900/30 border border-red-800/40 rounded-xl text-red-300 text-sm shrink-0">
+      {error}
+    </div>
+  ) : null
+
+  // ── Shared top header ─────────────────────────────────────────────────────
   return (
-    <div className="h-screen flex flex-col bg-[#0f0f1a] overflow-hidden">
+    <div className="h-dvh flex flex-col bg-[#0f0f1a] overflow-hidden">
       <DiceOverlay latestRoll={latestRoll} />
-      {/* Top bar */}
-      <header className="flex items-center justify-between px-4 py-2.5 border-b border-[#2d2d4e] bg-[#0f0f1a] shrink-0">
-        <div className="flex items-center gap-3">
+
+      <header className="flex items-center justify-between px-4 py-2.5 border-b border-[#2d2d4e] bg-[#0f0f1a]/95 backdrop-blur shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0">
           {confirmHome ? (
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-400">End campaign?</span>
-              <button
-                onClick={() => setConfirmHome(false)}
-                className="text-xs text-gray-500 hover:text-gray-300 transition-colors px-1.5"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={onEndCampaign}
-                className="text-xs text-red-400 hover:text-red-300 font-medium transition-colors px-1.5"
-              >
-                End
-              </button>
+              <button onClick={() => setConfirmHome(false)} className="text-xs text-gray-500 hover:text-gray-300 px-1.5">Cancel</button>
+              <button onClick={onEndCampaign} className="text-xs text-red-400 hover:text-red-300 font-medium px-1.5">End</button>
             </div>
           ) : (
             <>
               <button
                 onClick={() => setConfirmHome(true)}
                 aria-label="Return to home"
-                className="p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-white/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+                className="p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-white/5 transition-colors shrink-0"
               >
                 <House size={15} />
               </button>
-              <span className="text-white font-semibold text-sm">QuestForge</span>
-              {game.theme && (
-                <span className="text-gray-500 text-xs">{THEME_LABELS[game.theme] ?? game.theme}</span>
-              )}
-              {game.currentLocation && (
-                <>
-                  <span className="text-[#2d2d4e]">·</span>
-                  <span className="text-gray-500 text-xs truncate max-w-32">{game.currentLocation}</span>
-                </>
-              )}
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-white font-semibold text-sm">QuestForge</span>
+                  {inCombat && (
+                    <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-red-900/40 border border-red-800/40 text-red-400 text-[10px] font-medium">
+                      <Swords size={9} />
+                      <span className="hidden sm:inline">Combat</span>
+                    </span>
+                  )}
+                </div>
+                {game.currentLocation && (
+                  <p className="text-[10px] text-gray-600 truncate leading-none mt-0.5">{game.currentLocation}</p>
+                )}
+              </div>
             </>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          {inCombat && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-900/30 border border-red-800/40 text-red-400 text-xs font-medium">
-              <Swords size={11} />
-              <span>Combat</span>
-            </div>
-          )}
+
+        <div className="flex items-center gap-1.5 shrink-0">
           {isConfigured() && (
-            <div
-              className="flex items-center gap-1 text-xs text-gray-500"
-              title={lastSaved ? `Saved ${lastSaved.toLocaleTimeString()}` : 'Not saved yet'}
-            >
-              {isSaving ? (
-                <div className="w-3 h-3 border border-violet-500 border-t-transparent rounded-full animate-spin" />
-              ) : lastSaved ? (
-                <Cloud size={13} className="text-green-500" />
-              ) : (
-                <CloudOff size={13} />
-              )}
+            <div className="flex items-center gap-1 text-xs text-gray-500" title={lastSaved ? `Saved ${lastSaved.toLocaleTimeString()}` : 'Not saved'}>
+              {isSaving
+                ? <div className="w-3 h-3 border border-violet-500 border-t-transparent rounded-full animate-spin" />
+                : lastSaved ? <Cloud size={13} className="text-green-500" /> : <CloudOff size={13} />}
             </div>
           )}
           {kidsMode && <KidsModeBadge />}
@@ -395,41 +544,115 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
           <button
             onClick={() => setShowSettings(true)}
             aria-label="Open settings"
-            className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+            className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
           >
             <Settings size={16} />
           </button>
         </div>
       </header>
 
-      {/* Main layout */}
-      <div className="flex flex-1 min-h-0">
+      {/* ── MOBILE LAYOUT (< lg) ──────────────────────────────────────────── */}
+      <div className="flex-1 min-h-0 flex flex-col lg:hidden">
+        {/* Tab content */}
+        <div className="flex-1 min-h-0 relative">
+
+          {/* STORY TAB */}
+          {mobileTab === 'chat' && (
+            <div className="h-full flex flex-col">
+              {errorBanner}
+              <StoryPanel messages={game.messages} />
+              {!inCombat && <QuickActions actions={quickActions} onAction={handleQuickAction} isLoading={isLoading} />}
+              <InputBar onSend={handleSend} isLoading={isLoading} />
+            </div>
+          )}
+
+          {/* CHARACTER TAB */}
+          {mobileTab === 'character' && (
+            <div className="h-full overflow-y-auto">
+              <CharacterPanel characters={game.players} quests={game.quests} npcs={game.npcs} />
+            </div>
+          )}
+
+          {/* MAP TAB */}
+          {mobileTab === 'map' && (
+            <div className="h-full flex flex-col overflow-y-auto">
+              {mapHeader}
+              <div className="shrink-0 flex justify-center bg-[#0a0a14]">
+                {inCombat ? (
+                  <CombatGrid
+                    units={units} obstacles={obstacles} validMoves={validMoves}
+                    validTargets={validTargets} playerDodging={playerDodging}
+                    onCellClick={handleCellClick} onEnemyClick={handleEnemyClick}
+                    backgroundUrl={mapUrl} theme={game.theme ?? 'dark_fantasy'}
+                    mapSize={Math.min(mobileMapSize, 440)}
+                  />
+                ) : (
+                  <ExplorationMap
+                    sceneObjects={game.sceneObjects ?? []} backgroundUrl={mapUrl}
+                    playerName={game.players[0]?.name ?? '?'}
+                    playerHp={game.players[0]?.hp ?? 0} playerMaxHp={game.players[0]?.maxHp ?? 1}
+                    playerPortrait={game.players[0]?.portraitUrl}
+                    theme={game.theme ?? 'dark_fantasy'} mapSize={Math.min(mobileMapSize, 440)}
+                  />
+                )}
+              </div>
+              {combatActionPanel}
+              {sceneObjectList}
+            </div>
+          )}
+        </div>
+
+        {/* Bottom tab bar */}
+        <nav
+          className="shrink-0 flex items-stretch border-t border-[#2d2d4e] bg-[#0a0a14]"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        >
+          {(
+            [
+              { tab: 'chat' as const, icon: MessageSquare, label: 'Story', badge: unreadMessages > 0 ? unreadMessages : 0 },
+              { tab: 'character' as const, icon: UserRound, label: 'Character', badge: 0 },
+              { tab: 'map' as const, icon: Compass, label: 'Map', badge: 0, alert: inCombat && mobileTab !== 'map' },
+            ] as const
+          ).map(({ tab, icon: Icon, label, badge, alert }) => (
+            <button
+              key={tab}
+              onClick={() => setMobileTab(tab)}
+              className={[
+                'flex-1 flex flex-col items-center justify-center gap-1 py-2.5 relative transition-colors',
+                mobileTab === tab ? 'text-violet-400' : 'text-gray-600 hover:text-gray-400',
+              ].join(' ')}
+            >
+              {mobileTab === tab && (
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-violet-500 rounded-full" />
+              )}
+              <div className="relative">
+                <Icon size={20} strokeWidth={mobileTab === tab ? 2 : 1.5} />
+                {(badge > 0 || alert) && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 rounded-full bg-red-500 text-[9px] font-bold text-white flex items-center justify-center px-0.5">
+                    {badge > 0 ? (badge > 9 ? '9+' : badge) : ''}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] font-medium leading-none">{label}</span>
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* ── DESKTOP LAYOUT (≥ lg) ─────────────────────────────────────────── */}
+      <div className="flex-1 min-h-0 hidden lg:flex">
         {/* Left sidebar — Character panel */}
-        <aside className="w-64 shrink-0 border-r border-[#2d2d4e] hidden lg:flex flex-col overflow-hidden">
+        <aside className="w-64 shrink-0 border-r border-[#2d2d4e] flex flex-col overflow-hidden">
           <div className="flex-1 min-h-0 overflow-y-auto">
-            <CharacterPanel
-              characters={game.players}
-              quests={game.quests}
-              npcs={game.npcs}
-            />
+            <CharacterPanel characters={game.players} quests={game.quests} npcs={game.npcs} />
           </div>
         </aside>
 
         {/* Center — Story */}
         <main className="flex-1 flex flex-col min-w-0">
-          {error && (
-            <div className="mx-4 mt-3 px-4 py-2.5 bg-red-900/30 border border-red-800/40 rounded-lg text-red-300 text-sm">
-              {error}
-            </div>
-          )}
+          {errorBanner}
           <StoryPanel messages={game.messages} />
-          {!inCombat && (
-            <QuickActions
-              actions={quickActions}
-              onAction={handleQuickAction}
-              isLoading={isLoading}
-            />
-          )}
+          {!inCombat && <QuickActions actions={quickActions} onAction={handleQuickAction} isLoading={isLoading} />}
           <InputBar onSend={handleSend} isLoading={isLoading} />
         </main>
 
@@ -443,152 +666,29 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
           }}
         />
 
-        {/* Right sidebar — always visible: Exploration or Combat map */}
+        {/* Right sidebar — map */}
         <aside className="shrink-0 border-l border-[#2d2d4e] flex flex-col overflow-hidden" style={{ width: sidebarWidth }}>
-          {/* Header */}
-          <div className="px-3 py-2 border-b border-[#2d2d4e] flex items-center justify-between shrink-0">
-            {inCombat ? (
-              <>
-                <span className="text-xs font-medium text-red-400 uppercase tracking-wider">Battle</span>
-                <div className="flex items-center gap-2">
-                  {(() => {
-                    const pl = units.find(u => u.isPlayer && u.hp > 0)
-                    const cover = pl ? hasCover(pl.pos, obstacles) : false
-                    return cover ? (
-                      <span className="text-[10px] text-sky-400 flex items-center gap-1 border border-sky-800/40 bg-sky-900/20 px-1.5 py-0.5 rounded-full">
-                        🛡 Cover +2
-                      </span>
-                    ) : null
-                  })()}
-                  <span className="text-xs font-mono text-red-400">Round {combat?.round ?? 1}</span>
-                </div>
-              </>
-            ) : (
-              <>
-                <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Scene</span>
-                <span className="text-[10px] text-gray-600 truncate max-w-40">{game.currentLocation}</span>
-              </>
-            )}
-          </div>
-
-          {/* Map — combat or exploration */}
+          {mapHeader}
           <div className="flex-1 flex flex-col items-center overflow-y-auto">
             {inCombat ? (
               <CombatGrid
-                units={units}
-                obstacles={obstacles}
-                validMoves={validMoves}
-                validTargets={validTargets}
-                playerDodging={playerDodging}
-                onCellClick={handleCellClick}
-                onEnemyClick={handleEnemyClick}
-                backgroundUrl={mapUrl}
+                units={units} obstacles={obstacles} validMoves={validMoves}
+                validTargets={validTargets} playerDodging={playerDodging}
+                onCellClick={handleCellClick} onEnemyClick={handleEnemyClick}
+                backgroundUrl={mapUrl} theme={game.theme ?? 'dark_fantasy'} mapSize={sidebarWidth}
               />
             ) : (
               <ExplorationMap
-                sceneObjects={game.sceneObjects ?? []}
-                backgroundUrl={mapUrl}
+                sceneObjects={game.sceneObjects ?? []} backgroundUrl={mapUrl}
                 playerName={game.players[0]?.name ?? '?'}
-                playerHp={game.players[0]?.hp ?? 0}
-                playerMaxHp={game.players[0]?.maxHp ?? 1}
+                playerHp={game.players[0]?.hp ?? 0} playerMaxHp={game.players[0]?.maxHp ?? 1}
                 playerPortrait={game.players[0]?.portraitUrl}
-                theme={game.theme ?? 'dark_fantasy'}
+                theme={game.theme ?? 'dark_fantasy'} mapSize={sidebarWidth}
               />
             )}
           </div>
-
-          {/* Combat action bar (only during combat) */}
-          {inCombat && (
-            <div className="shrink-0 border-t border-[#2d2d4e] px-3 pt-2.5 pb-2">
-              {gridPhase === 'player' && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
-                    <span className={`w-2 h-2 rounded-full ${playerMoved ? 'bg-gray-700' : 'bg-emerald-500'}`} />
-                    <span className={playerMoved ? 'line-through text-gray-700' : 'text-gray-400'}>Movement</span>
-                    <span className="mx-1 text-[#2d2d4e]">·</span>
-                    <span className={`w-2 h-2 rounded-full ${playerAttacked ? 'bg-gray-700' : 'bg-orange-500'}`} />
-                    <span className={playerAttacked ? 'line-through text-gray-700' : 'text-gray-400'}>Action</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <button
-                      onClick={handleDodge}
-                      disabled={playerAttacked}
-                      title="Enemies attack with disadvantage. Stacks with Cover."
-                      className={[
-                        'flex flex-col items-center gap-0.5 py-2 rounded-lg border text-[11px] font-medium transition-all',
-                        playerDodging
-                          ? 'bg-sky-900/30 border-sky-500 text-sky-300'
-                          : 'bg-[#1a1a2e] border-[#2d2d4e] text-gray-400 hover:border-sky-800 disabled:opacity-30 disabled:cursor-not-allowed',
-                      ].join(' ')}
-                    >
-                      <span>🛡</span><span>Dodge</span>
-                    </button>
-                    <button
-                      onClick={endPlayerTurn}
-                      className="flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium bg-[#1a1a2e] hover:bg-[#252540] border border-[#2d2d4e] text-gray-500 hover:text-gray-300 rounded-lg transition-colors"
-                    >
-                      <span>→</span><span>End Turn</span>
-                    </button>
-                  </div>
-                  {validTargets.length > 0 && !playerAttacked && (
-                    <p className="text-[10px] text-yellow-400/70 text-center">
-                      Enemy in range — click to attack
-                    </p>
-                  )}
-                </div>
-              )}
-              {gridPhase === 'enemy' && (
-                <div className="flex items-center gap-2 py-2 text-xs text-red-400">
-                  <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                  Enemy thinking...
-                </div>
-              )}
-              {gridPhase === 'done' && (
-                <div className="text-center text-xs text-gray-500 py-2">Combat ended</div>
-              )}
-            </div>
-          )}
-
-          {/* Dice rolls (combat only) */}
-          {inCombat && rolls.length > 0 && (
-            <div className="shrink-0 border-t border-[#2d2d4e] overflow-y-auto" style={{ maxHeight: 120 }}>
-              <DiceRoller rolls={rolls} />
-            </div>
-          )}
-
-          {/* Combat log */}
-          {inCombat && combatLog.length > 0 && (
-            <div className="shrink-0 border-t border-[#2d2d4e] px-3 py-2 space-y-0.5 overflow-y-auto" style={{ maxHeight: 80 }}>
-              {combatLog.slice(-5).map((entry, i) => {
-                const isPlayer = entry.startsWith('You')
-                const isHit = entry.includes('Hit') || entry.includes('damage')
-                const isMiss = entry.includes('Miss') || entry.includes('Dodge')
-                return (
-                  <p key={i} className={[
-                    'text-[11px] leading-snug',
-                    isPlayer ? 'text-violet-300' : isMiss ? 'text-gray-500' : isHit ? 'text-red-400' : 'text-gray-400',
-                  ].join(' ')}>
-                    {entry}
-                  </p>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Exploration: scene object list */}
-          {!inCombat && game.sceneObjects && game.sceneObjects.filter(o => o.proximity !== 'distant').length > 0 && (
-            <div className="shrink-0 border-t border-[#2d2d4e] px-3 py-2">
-              <p className="text-[9px] text-gray-600 uppercase tracking-wider mb-1.5">Visible</p>
-              <div className="flex flex-wrap gap-1.5">
-                {game.sceneObjects.filter(o => o.proximity !== 'distant').map(obj => (
-                  <div key={obj.id} className="flex items-center gap-1 text-[10px] text-gray-500">
-                    <span>{obj.icon}</span>
-                    <span className={obj.interacted ? 'line-through text-gray-700' : ''}>{obj.name}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {combatActionPanel}
+          {sceneObjectList}
         </aside>
       </div>
 
@@ -596,10 +696,7 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
       {showSettings && (
         <SettingsScreen
           onClose={() => setShowSettings(false)}
-          onEndCampaign={() => {
-            setShowSettings(false)
-            onEndCampaign()
-          }}
+          onEndCampaign={() => { setShowSettings(false); onEndCampaign() }}
         />
       )}
     </div>

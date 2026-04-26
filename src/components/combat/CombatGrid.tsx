@@ -1,11 +1,83 @@
 import { useState, useEffect } from 'react'
 import type { GridUnit, GridPos, GridObstacle } from '../../hooks/useCombatGrid'
 import { GRID_SIZE, hasCover } from '../../hooks/useCombatGrid'
-
-const CELL = 40
+import type { Theme } from '../../types/index'
 
 const FALLBACK_STYLE = {
   background: 'radial-gradient(ellipse at 30% 40%, #1a0a2e 0%, #0a0a14 50%, #0d0d1a 100%)',
+}
+
+const THEME_STYLE: Record<Theme, string> = {
+  dark_fantasy:  'dark fantasy creature monster portrait, painterly, dramatic lighting',
+  space_odyssey: 'sci-fi alien robot enemy portrait, neon lighting, detailed',
+  pirate_seas:   'age of sail pirate villain portrait, weathered, menacing',
+  horror_manor:  'gothic Victorian horror creature portrait, pale, eerie lighting',
+  lego_universe: 'lego minifig villain, colorful, plastic toy style',
+}
+
+function enemyPortraitUrl(name: string, theme: Theme): string {
+  const style = THEME_STYLE[theme]
+  const seed = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 99999
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(`${name}, ${style}, face close-up, no background, square crop`)}?width=80&height=80&nologo=true&seed=${seed}&model=flux`
+}
+
+interface TooltipProps { text: string; children: React.ReactNode }
+function Tooltip({ text, children }: TooltipProps) {
+  const [show, setShow] = useState(false)
+  return (
+    <div className="relative w-full h-full" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+      {children}
+      {show && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 z-50 pointer-events-none" style={{ whiteSpace: 'nowrap' }}>
+          <div className="bg-[#0e0e24] border border-[#3d2d6e] text-white text-[10px] px-2 py-1 rounded-md shadow-lg">
+            {text}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+interface EnemyTokenProps {
+  unit: GridUnit
+  theme: Theme
+  isTarget: boolean
+  onEnemyClick: (id: string) => void
+}
+function EnemyToken({ unit, theme, isTarget, onEnemyClick }: EnemyTokenProps) {
+  const [imgLoaded, setImgLoaded] = useState(false)
+  const [imgError, setImgError] = useState(false)
+  const url = enemyPortraitUrl(unit.name, theme)
+  return (
+    <Tooltip text={`${unit.name} — ${unit.hp}/${unit.maxHp} HP`}>
+      <div
+        onClick={() => unit.hp > 0 && onEnemyClick(unit.id)}
+        className={[
+          'absolute inset-1.5 rounded-full overflow-hidden bg-red-900/90 border-2 border-red-500 shadow-lg shadow-red-900/60',
+          isTarget
+            ? 'ring-2 ring-yellow-400 ring-offset-1 ring-offset-transparent animate-pulse cursor-crosshair'
+            : 'cursor-default',
+        ].join(' ')}
+      >
+        {!imgError && (
+          <img
+            src={url}
+            alt={unit.name}
+            className={`w-full h-full object-cover transition-opacity duration-500 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+            onLoad={() => setImgLoaded(true)}
+            onError={() => setImgError(true)}
+          />
+        )}
+        {(!imgLoaded || imgError) && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-[11px] font-bold text-white leading-none">
+              {unit.name.charAt(0).toUpperCase()}
+            </span>
+          </div>
+        )}
+      </div>
+    </Tooltip>
+  )
 }
 
 interface CombatGridProps {
@@ -17,6 +89,8 @@ interface CombatGridProps {
   onCellClick: (pos: GridPos) => void
   onEnemyClick: (id: string) => void
   backgroundUrl: string
+  theme?: Theme
+  mapSize?: number
 }
 
 export function CombatGrid({
@@ -28,7 +102,10 @@ export function CombatGrid({
   onCellClick,
   onEnemyClick,
   backgroundUrl,
+  theme = 'dark_fantasy',
+  mapSize = 320,
 }: CombatGridProps) {
+  const CELL = Math.floor(mapSize / GRID_SIZE)
   const SIZE = CELL * GRID_SIZE
   const [imgLoaded, setImgLoaded] = useState(false)
   const [imgError, setImgError] = useState(false)
@@ -90,11 +167,13 @@ export function CombatGrid({
             >
               {/* Obstacle tile */}
               {obs && (
-                <div className="absolute inset-0 flex items-center justify-center text-lg select-none pointer-events-none">
-                  <span style={{ fontSize: 18, filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.8))' }}>
-                    {obs.icon}
-                  </span>
-                </div>
+                <Tooltip text={obs.name ?? obs.icon}>
+                  <div className="absolute inset-0 flex items-center justify-center text-lg select-none pointer-events-auto">
+                    <span style={{ fontSize: 18, filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.8))' }}>
+                      {obs.icon}
+                    </span>
+                  </div>
+                </Tooltip>
               )}
             </div>
           )
@@ -133,33 +212,33 @@ export function CombatGrid({
             className={`absolute transition-all duration-300 pointer-events-none ${isDead ? 'opacity-20' : ''}`}
             style={{ left: unit.pos.x * CELL, top: unit.pos.y * CELL, width: CELL, height: CELL }}
           >
-            <div
-              onClick={() => !unit.isPlayer && !isDead && onEnemyClick(unit.id)}
-              className={[
-                'absolute inset-1.5 rounded-full flex flex-col items-center justify-center pointer-events-auto select-none',
-                isDead
-                  ? 'bg-gray-900/80 border-2 border-gray-700'
-                  : unit.isPlayer
-                  ? 'bg-violet-700/90 border-2 border-violet-400 shadow-lg shadow-violet-900/60'
-                  : 'bg-red-900/90 border-2 border-red-500 shadow-lg shadow-red-900/60',
-                !isDead && isTarget
-                  ? 'ring-2 ring-yellow-400 ring-offset-1 ring-offset-transparent animate-pulse cursor-crosshair'
-                  : '',
-                !isDead && !unit.isPlayer && !isTarget ? 'cursor-default' : '',
-                !isDead && unit.isPlayer && playerDodging
-                  ? 'ring-2 ring-sky-400 ring-offset-1 ring-offset-transparent'
-                  : '',
-              ].join(' ')}
-            >
-              <span className="text-[11px] font-bold text-white leading-none">
-                {isDead ? '✕'
-                  : unit.isPlayer && (playerDodging || inCover) ? (playerDodging ? '🛡' : '🫣')
-                  : unit.name.charAt(0).toUpperCase()}
-              </span>
-              {!isDead && (
-                <span className="text-[8px] text-white/60 font-mono leading-none mt-0.5">{unit.hp}</span>
-              )}
-            </div>
+            {isDead ? (
+              <div className="absolute inset-1.5 rounded-full flex items-center justify-center bg-gray-900/80 border-2 border-gray-700 pointer-events-auto select-none">
+                <span className="text-[11px] font-bold text-white leading-none">✕</span>
+              </div>
+            ) : unit.isPlayer ? (
+              <Tooltip text={`${unit.name} — ${unit.hp}/${unit.maxHp} HP`}>
+                <div
+                  className={[
+                    'absolute inset-1.5 rounded-full flex flex-col items-center justify-center pointer-events-auto select-none',
+                    'bg-violet-700/90 border-2 border-violet-400 shadow-lg shadow-violet-900/60',
+                    playerDodging ? 'ring-2 ring-sky-400 ring-offset-1 ring-offset-transparent' : '',
+                  ].join(' ')}
+                >
+                  <span className="text-[11px] font-bold text-white leading-none">
+                    {playerDodging ? '🛡' : inCover ? '🫣' : unit.name.charAt(0).toUpperCase()}
+                  </span>
+                  <span className="text-[8px] text-white/60 font-mono leading-none mt-0.5">{unit.hp}</span>
+                </div>
+              </Tooltip>
+            ) : (
+              <EnemyToken
+                unit={unit}
+                theme={theme}
+                isTarget={isTarget}
+                onEnemyClick={onEnemyClick}
+              />
+            )}
 
             {/* HP bar */}
             {!isDead && (
