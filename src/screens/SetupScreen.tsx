@@ -5,6 +5,7 @@ import { KidsModeToggle } from '../components/setup/KidsModeToggle'
 import { CharacterForm, buildCharacterFromDraft } from '../components/setup/CharacterForm'
 import { Button } from '../components/ui/Button'
 import { useGameStore } from '../store/gameStore'
+import { useShallow } from 'zustand/react/shallow'
 import { useSettingsStore } from '../store/settingsStore'
 import { useTokenTracker } from '../hooks/useTokenTracker'
 import { useSupabase } from '../hooks/useSupabase'
@@ -37,11 +38,11 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
   const keyPanelRef = useRef<HTMLDivElement>(null)
 
   const startCampaign = useGameStore((s) => s.startCampaign)
-  const localCampaign = useGameStore((s) =>
+  const localCampaign = useGameStore(useShallow((s) =>
     s.campaignId && s.theme && s.players.length > 0 && s.messages.length > 0
       ? { campaignId: s.campaignId, theme: s.theme, playerName: s.players[0]?.name ?? '?', messageCount: s.messages.length, kidsMode: s.kidsMode, updatedAt: s.updatedAt }
       : null
-  )
+  ))
   const { kidsMode, getApiKey, setApiKey } = useSettingsStore()
   const { allTimeInputTokens, allTimeOutputTokens, allTimeCostUsd } = useTokenTracker()
   const { isConfigured, isLoading, listCampaigns, loadCampaign, deleteCampaign } = useSupabase()
