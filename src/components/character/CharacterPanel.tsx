@@ -47,14 +47,14 @@ function AbilityRow({ name, desc }: { name: string; desc: string }) {
     <div>
       <button
         onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-1.5 w-full text-left py-0.5 group"
+        className="flex items-center gap-1.5 w-full text-left py-1 sm:py-0.5 group min-h-[40px] sm:min-h-0"
       >
         <span className="text-violet-500 text-[10px]">✦</span>
-        <span className="text-xs text-violet-300 group-hover:text-violet-200 transition-colors flex-1">{name}</span>
-        <ChevronDown size={10} className={`text-gray-600 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <span className="text-sm sm:text-xs text-violet-300 group-hover:text-violet-200 transition-colors flex-1">{name}</span>
+        <ChevronDown size={14} className={`sm:w-2.5 sm:h-2.5 text-gray-600 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <p className="text-[11px] text-gray-500 ml-4 mb-1 pr-1 leading-snug">{desc}</p>
+        <p className="text-xs sm:text-[11px] text-gray-500 ml-4 mb-2 sm:mb-1 pr-1 leading-snug">{desc}</p>
       )}
     </div>
   )
@@ -67,18 +67,18 @@ function InventoryRow({ item }: { item: string }) {
     <div>
       <button
         onClick={() => data && setOpen(v => !v)}
-        className="flex items-center gap-2 w-full text-left px-2 py-0.5 rounded hover:bg-white/5 group transition-colors"
+        className="flex items-center gap-2 w-full text-left px-2 py-1.5 sm:py-0.5 rounded hover:bg-white/5 group transition-colors min-h-[44px] sm:min-h-0"
       >
-        <span className="text-gray-600">›</span>
-        <span className="text-xs text-gray-300 flex-1">{item}</span>
+        <span className="text-gray-500 text-base sm:text-sm">›</span>
+        <span className="text-sm sm:text-xs text-gray-300 flex-1">{item}</span>
         {data && (
-          <ChevronDown size={10} className={`text-gray-600 transition-transform ${open ? 'rotate-180' : ''}`} />
+          <ChevronDown size={14} className={`sm:w-2.5 sm:h-2.5 text-gray-600 transition-transform ${open ? 'rotate-180' : ''}`} />
         )}
       </button>
       {open && data && (
-        <div className="mx-2 mb-1.5 px-2.5 py-2 bg-[#0f0f1a] border border-[#2d2d4e] rounded-lg">
-          <p className="text-[11px] text-gray-400 leading-snug">{data.desc}</p>
-          <p className="text-[11px] text-violet-300 mt-1 font-mono leading-snug">{data.effect}</p>
+        <div className="mx-2 mb-2 sm:mb-1.5 px-3 py-2.5 sm:px-2.5 sm:py-2 bg-[#0f0f1a] border border-[#2d2d4e] rounded-lg">
+          <p className="text-xs sm:text-[11px] text-gray-400 leading-snug">{data.desc}</p>
+          <p className="text-xs sm:text-[11px] text-violet-300 mt-1.5 sm:mt-1 font-mono leading-snug">{data.effect}</p>
         </div>
       )}
     </div>
@@ -162,7 +162,7 @@ function CharacterCard({ character }: { character: Character }) {
       {/* Abilities */}
       {abilities.length > 0 && (
         <div className="px-3 pb-2 border-t border-[#2d2d4e] pt-2">
-          <div className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Abilities</div>
+          <div className="text-xs sm:text-[10px] text-gray-500 sm:text-gray-600 uppercase tracking-wider mb-1.5 sm:mb-1">Abilities</div>
           {abilities.map(a => <AbilityRow key={a.name} name={a.name} desc={a.desc} />)}
         </div>
       )}
@@ -196,8 +196,8 @@ export function CharacterPanel({ characters, quests, npcs }: CharacterPanelProps
       {/* Inventory */}
       {characters[0] && characters[0].inventory.length > 0 && (
         <div>
-          <div className="flex items-center gap-2 mb-1.5 text-xs font-sans text-gray-400 uppercase tracking-wider">
-            <Package size={12} />
+          <div className="flex items-center gap-2 mb-2 sm:mb-1.5 text-xs sm:text-xs font-sans text-gray-400 uppercase tracking-wider">
+            <Package size={14} className="sm:w-3 sm:h-3" />
             <span>Inventory</span>
           </div>
           <div className="space-y-0.5">
