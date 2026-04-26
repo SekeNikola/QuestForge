@@ -25,7 +25,11 @@ function stripTaggedBlock(text: string, tag: string): { extracted: string | null
 
   const jsonStart = match.index + match[0].length
   const block = extractJsonBlock(text, jsonStart - 1) // -1 to start search from the opening {
-  if (!block) return { extracted: null, cleaned: text }
+  if (!block) {
+    // JSON was truncated (hit max_tokens mid-block) — strip from tag to end to prevent leaking
+    const cleaned = text.slice(0, match.index).trimEnd()
+    return { extracted: null, cleaned }
+  }
 
   // The closing ] should immediately follow the closing }
   const afterJson = text.slice(block.end).trimStart()

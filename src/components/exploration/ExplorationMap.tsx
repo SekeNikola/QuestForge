@@ -78,25 +78,26 @@ function NpcToken({ obj, theme, cell }: NpcTokenProps) {
   const [imgLoaded, setImgLoaded] = useState(false)
   const [imgError, setImgError] = useState(false)
   const url = npcPortraitUrl(obj.name, theme)
+  const showFallback = !imgLoaded || imgError
 
   return (
     <Tooltip text={obj.name}>
       <div
         className="absolute inset-1 rounded-full overflow-hidden border-2 border-violet-500/60 shadow-lg shadow-violet-900/40 cursor-default"
-        style={{ background: '#1a0a2e' }}
+        style={{ background: showFallback ? 'rgba(30,10,50,0.9)' : '#1a0a2e' }}
       >
         {!imgError && (
           <img
             src={url}
             alt={obj.name}
-            className={`w-full h-full object-cover transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+            className={`w-full h-full object-cover transition-opacity duration-500 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
             onLoad={() => setImgLoaded(true)}
             onError={() => setImgError(true)}
           />
         )}
-        {(!imgLoaded || imgError) && (
+        {showFallback && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <span style={{ fontSize: cell * 0.38 }}>{obj.icon || '👤'}</span>
+            <span style={{ fontSize: cell * 0.52, lineHeight: 1 }}>{obj.icon || '👤'}</span>
           </div>
         )}
       </div>

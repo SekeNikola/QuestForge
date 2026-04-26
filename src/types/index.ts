@@ -166,9 +166,9 @@ export interface ApiSettings {
   model: 'claude-sonnet-4-5'
   responseLength: ResponseLength
   maxTokensMap: {
-    compact: 300
-    normal: 600
-    verbose: 1200
+    compact: number
+    normal: number
+    verbose: number
   }
 }
 

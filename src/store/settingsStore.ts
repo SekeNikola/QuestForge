@@ -6,7 +6,7 @@ import { sessionStorageGet, sessionStorageSet, sessionStorageRemove } from '../u
 interface SettingsStore {
   model: 'claude-sonnet-4-5'
   responseLength: ResponseLength
-  maxTokensMap: { compact: 300; normal: 600; verbose: 1200 }
+  maxTokensMap: { compact: number; normal: number; verbose: number }
   kidsMode: boolean
   supabaseUrl: string
   supabaseAnonKey: string
@@ -29,7 +29,7 @@ export const useSettingsStore = create<SettingsStore>()(
     (set, get) => ({
       model: 'claude-sonnet-4-5',
       responseLength: 'normal',
-      maxTokensMap: { compact: 300, normal: 600, verbose: 1200 },
+      maxTokensMap: { compact: 400, normal: 900, verbose: 1600 },
       kidsMode: false,
       supabaseUrl: import.meta.env.VITE_SUPABASE_URL ?? '',
       supabaseAnonKey: import.meta.env.VITE_SUPABASE_ANON_KEY ?? '',
