@@ -22,6 +22,7 @@ interface SettingsStore {
   clearApiKey: () => void
   getSupabaseUrl: () => string
   getSupabaseAnonKey: () => string
+  getUserId: () => string
 }
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -44,6 +45,16 @@ export const useSettingsStore = create<SettingsStore>()(
       clearApiKey: () => sessionStorageRemove('qf:api_key'),
       getSupabaseUrl: () => get().supabaseUrl,
       getSupabaseAnonKey: () => get().supabaseAnonKey,
+      getUserId: () => {
+        const key = sessionStorageGet<string>('qf:api_key') ?? ''
+        if (!key) return ''
+        let h = 0x811c9dc5
+        for (let i = 0; i < key.length; i++) {
+          h ^= key.charCodeAt(i)
+          h = Math.imul(h, 0x01000193) >>> 0
+        }
+        return h.toString(16).padStart(8, '0')
+      },
     }),
     {
       name: 'qf:settings',

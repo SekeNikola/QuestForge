@@ -9,7 +9,7 @@ export function useSupabase() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const { getSupabaseUrl, getSupabaseAnonKey } = useSettingsStore()
+  const { getSupabaseUrl, getSupabaseAnonKey, getUserId } = useSettingsStore()
 
   function getClient() {
     const url = getSupabaseUrl()
@@ -29,6 +29,9 @@ export function useSupabase() {
     const client = getClient()
     if (!client) return
 
+    const userId = getUserId()
+    if (!userId) return
+
     const state = useGameStore.getState()
     if (!state.campaignId || !state.theme) return
 
@@ -45,6 +48,7 @@ export function useSupabase() {
         .upsert(
           {
             campaign_id: state.campaignId,
+            user_id: userId,
             display_name: displayName,
             theme: state.theme,
             kids_mode: state.kidsMode,
@@ -65,10 +69,13 @@ export function useSupabase() {
     }
   }, [])
 
-  // List all saved campaigns (for the setup screen)
+  // List saved campaigns for this user only
   const listCampaigns = useCallback(async (): Promise<CampaignRow[]> => {
     const client = getClient()
     if (!client) return []
+
+    const userId = getUserId()
+    if (!userId) return []
 
     setIsLoading(true)
     setError(null)
@@ -77,6 +84,7 @@ export function useSupabase() {
       const { data, error: fetchError } = await client
         .from('campaigns')
         .select('id, campaign_id, display_name, theme, kids_mode, message_count, created_at, updated_at')
+        .eq('user_id', userId)
         .order('updated_at', { ascending: false })
         .limit(20)
 
@@ -91,10 +99,13 @@ export function useSupabase() {
     }
   }, [])
 
-  // Load a specific campaign into the game store
+  // Load a specific campaign — must belong to this user
   const loadCampaign = useCallback(async (campaignId: string): Promise<boolean> => {
     const client = getClient()
     if (!client) return false
+
+    const userId = getUserId()
+    if (!userId) return false
 
     setIsLoading(true)
     setError(null)
@@ -104,6 +115,7 @@ export function useSupabase() {
         .from('campaigns')
         .select('state')
         .eq('campaign_id', campaignId)
+        .eq('user_id', userId)
         .single()
 
       if (fetchError) throw fetchError
@@ -139,16 +151,20 @@ export function useSupabase() {
     }
   }, [])
 
-  // Delete a campaign from Supabase
+  // Delete a campaign — must belong to this user
   const deleteCampaign = useCallback(async (campaignId: string): Promise<boolean> => {
     const client = getClient()
     if (!client) return false
+
+    const userId = getUserId()
+    if (!userId) return false
 
     try {
       const { error: deleteError } = await client
         .from('campaigns')
         .delete()
         .eq('campaign_id', campaignId)
+        .eq('user_id', userId)
 
       if (deleteError) throw deleteError
       return true
