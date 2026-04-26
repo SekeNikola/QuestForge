@@ -43,12 +43,12 @@ function objPos(obj: SceneObject): { x: number; y: number } | null {
   }
 }
 
-interface TooltipProps { text: string; children: React.ReactNode }
-function Tooltip({ text, children }: TooltipProps) {
+interface TooltipProps { text: string; children: React.ReactNode; className?: string }
+function Tooltip({ text, children, className = 'relative' }: TooltipProps) {
   const [show, setShow] = useState(false)
   return (
     <div
-      className="relative"
+      className={className}
       onMouseEnter={() => setShow(true)}
       onMouseLeave={() => setShow(false)}
     >
@@ -79,7 +79,7 @@ function NpcToken({ obj, theme, cell }: NpcTokenProps) {
   const showFallback = !imgLoaded || imgError
 
   return (
-    <Tooltip text={obj.name}>
+    <Tooltip text={obj.name} className="absolute inset-0">
       <div
         className="absolute inset-1 rounded-full overflow-hidden border-2 border-violet-500/60 shadow-lg shadow-violet-900/40 cursor-default"
         style={{ background: showFallback ? 'rgba(30,10,50,0.9)' : '#1a0a2e' }}
@@ -213,7 +213,7 @@ export function ExplorationMap({
               {isNpc ? (
                 <NpcToken obj={obj} theme={theme} cell={CELL} />
               ) : (
-                <Tooltip text={`${obj.name}${obj.type === 'exit' ? ' (exit)' : ''}`}>
+                <Tooltip text={`${obj.name}${obj.type === 'exit' ? ' (exit)' : ''}`} className="absolute inset-0">
                   <div
                     className="absolute inset-1.5 rounded-lg flex items-center justify-center cursor-default"
                     style={{
