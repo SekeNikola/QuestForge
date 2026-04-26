@@ -37,6 +37,11 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
   const keyPanelRef = useRef<HTMLDivElement>(null)
 
   const startCampaign = useGameStore((s) => s.startCampaign)
+  const localCampaign = useGameStore((s) =>
+    s.campaignId && s.theme && s.players.length > 0 && s.messages.length > 0
+      ? { campaignId: s.campaignId, theme: s.theme, playerName: s.players[0]?.name ?? '?', messageCount: s.messages.length, kidsMode: s.kidsMode, updatedAt: s.updatedAt }
+      : null
+  )
   const { kidsMode, getApiKey, setApiKey } = useSettingsStore()
   const { allTimeInputTokens, allTimeOutputTokens, allTimeCostUsd } = useTokenTracker()
   const { isConfigured, isLoading, listCampaigns, loadCampaign, deleteCampaign } = useSupabase()
@@ -204,6 +209,40 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
             )
           })}
         </div>
+
+        {/* Local resume card (localStorage-based, no Supabase required) */}
+        {localCampaign && step === 'theme' && (
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-3 text-xs text-gray-400 uppercase tracking-wider font-bold">
+              <span>↩</span>
+              <span>Continue Your Adventure</span>
+            </div>
+            <div
+              className="flex items-center gap-3 px-4 py-3 bg-[#12122a] border border-violet-500/40 hover:border-violet-400/70 rounded-2xl cursor-pointer transition-colors group"
+              onClick={onStart}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && onStart()}
+            >
+              <div className="text-2xl">
+                {localCampaign.theme === 'dark_fantasy' ? '⚔️' : localCampaign.theme === 'space_odyssey' ? '🚀' : localCampaign.theme === 'pirate_seas' ? '🏴‍☠️' : localCampaign.theme === 'horror_manor' ? '🕯️' : '🧱'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-white text-sm font-medium truncate">
+                  {localCampaign.theme.replace(/_/g, ' ')} · {localCampaign.playerName}
+                </div>
+                <div className="text-gray-500 text-xs">
+                  {localCampaign.messageCount} messages · {new Date(localCampaign.updatedAt).toLocaleDateString()}
+                </div>
+              </div>
+              {localCampaign.kidsMode && (
+                <span className="text-xs text-yellow-400 border border-yellow-700/40 rounded-full px-2 py-0.5">Kids</span>
+              )}
+              <Button variant="primary" size="sm" onClick={onStart}>Resume</Button>
+            </div>
+            <div className="border-t border-[#2d2d4e] my-5" />
+          </div>
+        )}
 
         {/* Saved campaigns */}
         {isConfigured() && savedCampaigns.length > 0 && step === 'theme' && (
