@@ -128,6 +128,7 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
   const [combatLog, setCombatLog] = useState<string[]>([])
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const locationMapCache = useRef<Map<string, string>>(new Map())
+  const hasAutoStarted = useRef(false)
 
   const game = useGameStore()
   const { kidsMode } = useSettingsStore()
@@ -216,6 +217,17 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     }
   }, [messageCount])
+
+  // Auto-send opening scene when adventure begins fresh
+  useEffect(() => {
+    if (hasAutoStarted.current) return
+    if (game.messages.length > 0 || !game.theme || game.players.length === 0) return
+    hasAutoStarted.current = true
+    const t = setTimeout(() => {
+      handleSend('Begin the adventure. Describe where I am and what I see, hear, and smell around me.')
+    }, 300)
+    return () => clearTimeout(t)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSend = async (text: string) => {
     setQuickActions([])
