@@ -38,6 +38,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
   const keyPanelRef = useRef<HTMLDivElement>(null)
 
   const startCampaign = useGameStore((s) => s.startCampaign)
+  const resetSession  = useGameStore((s) => s.resetSession)
   const localCampaign = useGameStore(useShallow((s) =>
     s.campaignId && s.theme && s.players.length > 0 && s.messages.length > 0
       ? { campaignId: s.campaignId, theme: s.theme, playerName: s.players[0]?.name ?? '?', messageCount: s.messages.length, kidsMode: s.kidsMode, updatedAt: s.updatedAt }
@@ -81,6 +82,15 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
     e.stopPropagation()
     await deleteCampaign(row.campaign_id)
     setSavedCampaigns((prev) => prev.filter((c) => c.campaign_id !== row.campaign_id))
+  }
+
+  const handleDeleteLocal = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (localCampaign && isConfigured()) {
+      await deleteCampaign(localCampaign.campaignId)
+      setSavedCampaigns((prev) => prev.filter((c) => c.campaign_id !== localCampaign.campaignId))
+    }
+    resetSession()
   }
 
   const canProceedFromTheme = selectedTheme !== null
@@ -211,8 +221,8 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
           })}
         </div>
 
-        {/* Local resume card (localStorage-based, no Supabase required) */}
-        {localCampaign && step === 'theme' && (
+        {/* Local resume card — hide if Supabase already lists this campaign */}
+        {localCampaign && step === 'theme' && !savedCampaigns.some(r => r.campaign_id === localCampaign.campaignId) && (
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-3 text-xs text-gray-400 uppercase tracking-wider font-bold">
               <span>↩</span>
@@ -239,7 +249,14 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
               {localCampaign.kidsMode && (
                 <span className="text-xs text-yellow-400 border border-yellow-700/40 rounded-full px-2 py-0.5">Kids</span>
               )}
-              <Button variant="primary" size="sm" onClick={onStart}>Resume</Button>
+              <Button variant="primary" size="sm" onClick={(e) => { e.stopPropagation(); onStart() }}>Resume</Button>
+              <button
+                onClick={handleDeleteLocal}
+                className="p-1.5 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all focus:outline-none"
+                aria-label="Delete campaign"
+              >
+                <Trash2 size={13} />
+              </button>
             </div>
             <div className="border-t border-[#2d2d4e] my-5" />
           </div>
