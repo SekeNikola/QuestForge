@@ -21,13 +21,6 @@ import type { Combatant, Theme, StatKey } from '../types/index'
 import type { DiceRoll, GridUnit, GridObstacle } from '../hooks/useCombatGrid'
 import { hasCover } from '../hooks/useCombatGrid'
 
-const THEME_LABELS: Record<string, string> = {
-  dark_fantasy: '⚔️ Dark Fantasy',
-  space_odyssey: '🚀 Space Odyssey',
-  pirate_seas: '🏴‍☠️ Pirate Seas',
-  horror_manor: '🕯️ Horror Manor',
-  lego_universe: '🧱 Lego Universe',
-}
 
 const ENEMY_NAMES: Record<Theme, string[]> = {
   dark_fantasy: ['Goblin Scout', 'Skeleton Warrior', 'Dark Cultist'],
@@ -609,8 +602,8 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
         >
           {(
             [
-              { tab: 'chat' as const, icon: MessageSquare, label: 'Story', badge: unreadMessages > 0 ? unreadMessages : 0 },
-              { tab: 'character' as const, icon: UserRound, label: 'Character', badge: 0 },
+              { tab: 'chat' as const, icon: MessageSquare, label: 'Story', badge: unreadMessages > 0 ? unreadMessages : 0, alert: false },
+              { tab: 'character' as const, icon: UserRound, label: 'Character', badge: 0, alert: false },
               { tab: 'map' as const, icon: Compass, label: 'Map', badge: 0, alert: inCombat && mobileTab !== 'map' },
             ] as const
           ).map(({ tab, icon: Icon, label, badge, alert }) => (
