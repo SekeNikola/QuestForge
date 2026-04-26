@@ -126,9 +126,12 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
   const [latestRoll, setLatestRoll] = useState<DiceRoll | null>(null)
   const [mapUrl, setMapUrl] = useState('')
   const [combatLog, setCombatLog] = useState<string[]>([])
+  const [sidebarWidth, setSidebarWidth] = useState(320)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const locationMapCache = useRef<Map<string, string>>(new Map())
   const hasAutoStarted = useRef(false)
+  const isDraggingRef = useRef(false)
+  const dragStartRef = useRef({ x: 0, width: 0 })
 
   const game = useGameStore()
   const { kidsMode } = useSettingsStore()
@@ -193,6 +196,22 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
   useEffect(() => {
     obstaclesRef.current = obstacles
   }, [obstacles])
+
+  // Sidebar resize
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!isDraggingRef.current) return
+      const delta = dragStartRef.current.x - e.clientX
+      setSidebarWidth(Math.max(200, Math.min(560, dragStartRef.current.width + delta)))
+    }
+    const onUp = () => { isDraggingRef.current = false }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, [])
 
   // Generate exploration map when location changes (cached per location)
   useEffect(() => {
@@ -414,8 +433,18 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
           <InputBar onSend={handleSend} isLoading={isLoading} />
         </main>
 
+        {/* Drag handle */}
+        <div
+          className="w-1 shrink-0 cursor-col-resize bg-[#2d2d4e] hover:bg-violet-600/40 transition-colors active:bg-violet-500/60 select-none"
+          onMouseDown={(e) => {
+            isDraggingRef.current = true
+            dragStartRef.current = { x: e.clientX, width: sidebarWidth }
+            e.preventDefault()
+          }}
+        />
+
         {/* Right sidebar — always visible: Exploration or Combat map */}
-        <aside className="w-80 shrink-0 border-l border-[#2d2d4e] flex flex-col overflow-hidden">
+        <aside className="shrink-0 border-l border-[#2d2d4e] flex flex-col overflow-hidden" style={{ width: sidebarWidth }}>
           {/* Header */}
           <div className="px-3 py-2 border-b border-[#2d2d4e] flex items-center justify-between shrink-0">
             {inCombat ? (
@@ -462,6 +491,8 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
                 playerName={game.players[0]?.name ?? '?'}
                 playerHp={game.players[0]?.hp ?? 0}
                 playerMaxHp={game.players[0]?.maxHp ?? 1}
+                playerPortrait={game.players[0]?.portraitUrl}
+                theme={game.theme ?? 'dark_fantasy'}
               />
             )}
           </div>

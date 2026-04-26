@@ -26,22 +26,27 @@ const THEME_LABELS: Record<Theme, string> = {
 
 const SCENE_MAP_RULES = `
 ━━━ SCENE MAP (always active) ━━━
-The player has a persistent map visible at all times — in exploration AND combat.
-Whenever you describe a new location OR the scene changes significantly, include in [MEMORY_UPDATE]:
-  "sceneObjects": [{"id":"unique_id","name":"Name","icon":"emoji","proximity":"near","direction":"n"}, ...]
+The player has a persistent map visible at all times. Whenever you describe a new location OR the scene
+changes significantly, include in [MEMORY_UPDATE]:
+  "sceneObjects": [{"id":"snake_id","name":"Name","icon":"emoji","type":"object","proximity":"near","direction":"n"}]
 
-proximity (distance from player on the map grid):
-  "adjacent" = 1 sq  |  "near" = 2 sq  |  "medium" = 4 sq  |  "far" = 6 sq  |  "distant" = off-map
+REQUIRED FIELDS: id (unique snake_case), name, icon, type, proximity, direction
+type: "npc" for any person/creature | "object" for items/furniture/features | "exit" for doors/passages
 
+proximity: "adjacent"(1sq) | "near"(2sq) | "medium"(4sq) | "far"(6sq) | "distant"(off-map legend only)
 direction: "n" "ne" "e" "se" "s" "sw" "w" "nw" "center"
 
-Include ALL visible objects, containers, doors, NPCs, and points of interest. Good icons:
-  📦 crate/chest  💰 treasure  🚪 door/exit  🕯 torch  ⚔ weapons  🛡 armor  📜 scroll
-  🔮 magic  💎 gem  🍺 bar/drinks  🗄 shelves  🧙 mage  👤 NPC  🏴‍☠️ pirate  🤖 bot  👻 undead
+ICON RULES — pick an icon that literally matches the object, not a category:
+  Tavern/bar → 🍺   Chest/crate → 📦   Door/gate → 🚪   Notice board → 📋   Ship/dock → ⚓
+  Torch/fire → 🕯   Well → 🪣   Barrel → 🛢   Table → 🪑   Bookshelf → 📚   Altar → 🏛
+  Sword rack → ⚔   Shield → 🛡   Scroll → 📜   Crystal → 🔮   Gem → 💎   Coin pile → 🪙
+  Campfire → 🔥   Tree → 🌲   Rock → 🪨   Trap → ⚙   Cage → 🔒   Cauldron → 🫕
+  NPC stranger → 👤   Guard → 💂   Merchant → 🧑‍💼   Mage → 🧙   Pirate → 🏴‍☠️   Ghost → 👻
+  Robot → 🤖   Alien → 👽   Elf → 🧝   Dwarf → 🧔   Child → 🧒   Animal → 🐺
+  DO NOT use 💰 money bag — use 🪙 coin pile or 📦 chest instead.
 
-Update sceneObjects when objects are used/removed. Distant observers use proximity "distant" — they
-appear in a legend below the map only. If player gets binoculars, move distant NPCs to "far".
-The <scene> tag in each message shows exactly what the player currently sees. Always reference it.`
+Update sceneObjects when objects are used/removed. Distant observers: proximity "distant" — legend only.
+The <scene> tag shows exactly what the player sees. Always reference it for environment questions.`
 
 const DND_RULES = `
 D&D 5E MECHANICS — Follow these rules exactly. Never skip a check by narrating the outcome yourself.

@@ -56,6 +56,7 @@ export interface SceneObject {
   id: string
   name: string
   icon: string
+  type?: 'npc' | 'object' | 'exit'
   proximity: SceneProximity
   direction: SceneDirection
   interacted?: boolean
