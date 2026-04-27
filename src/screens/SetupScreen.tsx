@@ -10,6 +10,7 @@ import { useSettingsStore } from '../store/settingsStore'
 import { useTokenTracker } from '../hooks/useTokenTracker'
 import { useSupabase } from '../hooks/useSupabase'
 import { ChevronRight, ChevronLeft, Swords, Cloud, Trash2, Eye, EyeOff, Key, X } from 'lucide-react'
+import { sanitiseApiKey } from '../utils/storage'
 
 type Step = 'theme' | 'character' | 'review'
 
@@ -66,12 +67,13 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
   }, [showKeyPanel])
 
   const handleSaveKey = () => {
-    setApiKey(apiKeyInput.trim())
+    setApiKey(sanitiseApiKey(apiKeyInput))
     setKeySaved(true)
     setTimeout(() => { setKeySaved(false); setShowKeyPanel(false) }, 1200)
   }
 
   const handleResume = async (row: CampaignRow) => {
+    if (!getApiKey()) { setShowKeyPanel(true); return }
     setLoadingCampaignId(row.campaign_id)
     const ok = await loadCampaign(row.campaign_id)
     if (ok) onStart()
@@ -230,10 +232,10 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
             </div>
             <div
               className="flex items-center gap-3 px-4 py-3 bg-[#12122a] border border-violet-500/40 hover:border-violet-400/70 rounded-2xl cursor-pointer transition-colors group"
-              onClick={onStart}
+              onClick={() => { if (!getApiKey()) { setShowKeyPanel(true); return }; onStart() }}
               role="button"
               tabIndex={0}
-              onKeyDown={(e) => e.key === 'Enter' && onStart()}
+              onKeyDown={(e) => { if (e.key === 'Enter') { if (!getApiKey()) { setShowKeyPanel(true); return }; onStart() } }}
             >
               <div className="text-2xl">
                 {localCampaign.theme === 'dark_fantasy' ? '⚔️' : localCampaign.theme === 'space_odyssey' ? '🚀' : localCampaign.theme === 'pirate_seas' ? '🏴‍☠️' : localCampaign.theme === 'horror_manor' ? '🕯️' : '🧱'}
@@ -249,7 +251,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
               {localCampaign.kidsMode && (
                 <span className="text-xs text-yellow-400 border border-yellow-700/40 rounded-full px-2 py-0.5">Kids</span>
               )}
-              <Button variant="primary" size="sm" onClick={(e) => { e.stopPropagation(); onStart() }}>Resume</Button>
+              <Button variant="primary" size="sm" onClick={(e) => { e.stopPropagation(); if (!getApiKey()) { setShowKeyPanel(true); return }; onStart() }}>Resume</Button>
               <button
                 onClick={handleDeleteLocal}
                 className="p-1.5 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all focus:outline-none"
@@ -384,7 +386,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
                 </div>
                 <div>
                   <span className="text-gray-500 text-xs uppercase tracking-wider">AI Model</span>
-                  <div className="text-gray-300 mt-1 text-xs font-mono">claude-sonnet-4-5</div>
+                  <div className="text-gray-300 mt-1 text-xs font-mono">claude-sonnet-4-6</div>
                 </div>
               </div>
 

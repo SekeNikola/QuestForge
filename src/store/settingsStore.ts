@@ -4,7 +4,7 @@ import type { ResponseLength } from '../types/index'
 import { sessionStorageGet, sessionStorageSet, sessionStorageRemove } from '../utils/storage'
 
 interface SettingsStore {
-  model: 'claude-sonnet-4-5'
+  model: 'claude-sonnet-4-6'
   responseLength: ResponseLength
   maxTokensMap: { compact: number; normal: number; verbose: number }
   kidsMode: boolean
@@ -28,7 +28,7 @@ interface SettingsStore {
 export const useSettingsStore = create<SettingsStore>()(
   persist(
     (set, get) => ({
-      model: 'claude-sonnet-4-5',
+      model: 'claude-sonnet-4-6',
       responseLength: 'normal',
       maxTokensMap: { compact: 400, normal: 900, verbose: 1600 },
       kidsMode: false,

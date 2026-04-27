@@ -28,6 +28,11 @@ export function removeItem(key: string): void {
   }
 }
 
+// Strips whitespace and invisible/non-printable characters that mobile paste can introduce.
+export function sanitiseApiKey(raw: string): string {
+  return raw.replace(/[^\x20-\x7E]/g, '').trim()
+}
+
 // sessionStorage variants — used for API key (never persisted across tab close)
 
 export function sessionStorageGet<T>(key: string): T | null {

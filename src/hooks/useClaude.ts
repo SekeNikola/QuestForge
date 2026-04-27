@@ -106,7 +106,10 @@ export function useClaude() {
 
       return rawText
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Unknown error calling Claude API'
+      let msg = err instanceof Error ? err.message : 'Unknown error calling Claude API'
+      if (err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 401) {
+        msg = 'Invalid API key. Go to Settings and re-enter your Anthropic API key.'
+      }
       setError(msg)
       throw err
     } finally {

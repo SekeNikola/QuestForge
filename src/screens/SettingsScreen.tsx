@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Eye, EyeOff, X, Trash2, LogOut, Cloud, Save } from 'lucide-react'
 import { useSettingsStore } from '../store/settingsStore'
+import { sanitiseApiKey } from '../utils/storage'
 import { useTokenTracker } from '../hooks/useTokenTracker'
 import { useGameStore } from '../store/gameStore'
 import { useSupabase } from '../hooks/useSupabase'
@@ -32,7 +33,7 @@ export function SettingsScreen({ onClose, onEndCampaign }: SettingsScreenProps) 
   const [supaSaved, setSupaSaved] = useState(false)
 
   const handleSaveKey = () => {
-    settings.setApiKey(apiKeyInput.trim())
+    settings.setApiKey(sanitiseApiKey(apiKeyInput))
     setKeySaved(true)
     setTimeout(() => setKeySaved(false), 2000)
   }
@@ -76,6 +77,7 @@ export function SettingsScreen({ onClose, onEndCampaign }: SettingsScreenProps) 
                     type={showKey ? 'text' : 'password'}
                     value={apiKeyInput}
                     onChange={(e) => setApiKeyInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSaveKey()}
                     placeholder="sk-ant-…"
                     className="w-full bg-[#1a1a2e] border border-[#2d2d4e] focus:border-violet-500 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none pr-10 font-mono"
                     aria-label="API key input"

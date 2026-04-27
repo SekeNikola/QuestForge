@@ -129,7 +129,7 @@ export function CharacterForm({ index, theme, onChange, initialValue = {} }: Pro
     try {
       const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true })
       const resp = await client.messages.create({
-        model: 'claude-sonnet-4-5',
+        model: 'claude-sonnet-4-6',
         max_tokens: 150,
         messages: [{ role: 'user', content: `Write a 2-sentence character backstory for a ${cls} in a ${theme.replace('_', ' ')} RPG setting. Name: ${name || 'a hero'}. Be evocative and specific. No meta-commentary, just the backstory.` }],
       })
