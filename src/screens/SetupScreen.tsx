@@ -10,6 +10,7 @@ import { useSettingsStore } from '../store/settingsStore'
 import { useTokenTracker } from '../hooks/useTokenTracker'
 import { useSupabase } from '../hooks/useSupabase'
 import { ChevronRight, ChevronLeft, Swords, Cloud, Trash2, Eye, EyeOff, Key, X } from 'lucide-react'
+import Anthropic from '@anthropic-ai/sdk'
 import { sanitiseApiKey } from '../utils/storage'
 
 type Step = 'theme' | 'character' | 'review'
@@ -36,6 +37,8 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
   const [apiKeyInput, setApiKeyInput] = useState('')
   const [showApiKey, setShowApiKey] = useState(false)
   const [keySaved, setKeySaved] = useState(false)
+  const [keyTestState, setKeyTestState] = useState<'idle' | 'testing' | 'ok' | 'fail'>('idle')
+  const [keyTestError, setKeyTestError] = useState('')
   const keyPanelRef = useRef<HTMLDivElement>(null)
 
   const startCampaign = useGameStore((s) => s.startCampaign)
@@ -69,7 +72,25 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
   const handleSaveKey = () => {
     setApiKey(sanitiseApiKey(apiKeyInput))
     setKeySaved(true)
+    setKeyTestState('idle')
     setTimeout(() => { setKeySaved(false); setShowKeyPanel(false) }, 1200)
+  }
+
+  const handleTestKey = async () => {
+    const key = sanitiseApiKey(apiKeyInput)
+    if (!key) return
+    setKeyTestState('testing')
+    setKeyTestError('')
+    try {
+      const client = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true })
+      await client.messages.create({ model: 'claude-haiku-4-5-20251001', max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] })
+      setKeyTestState('ok')
+    } catch (err: unknown) {
+      setKeyTestState('fail')
+      const status = err && typeof err === 'object' && 'status' in err ? (err as { status: number }).status : null
+      const msg = err instanceof Error ? err.message : 'Unknown error'
+      setKeyTestError(status === 401 ? 'Invalid key — check it matches what\'s on console.anthropic.com' : msg)
+    }
   }
 
   const handleResume = async (row: CampaignRow) => {
@@ -151,7 +172,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
               <input
                 type={showApiKey ? 'text' : 'password'}
                 value={apiKeyInput}
-                onChange={(e) => setApiKeyInput(e.target.value)}
+                onChange={(e) => { setApiKeyInput(e.target.value); setKeyTestState('idle') }}
                 onKeyDown={(e) => e.key === 'Enter' && handleSaveKey()}
                 placeholder="sk-ant-…"
                 autoFocus
@@ -165,19 +186,38 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
                 {showApiKey ? <EyeOff size={13} /> : <Eye size={13} />}
               </button>
             </div>
-            <button
-              onClick={handleSaveKey}
-              disabled={!apiKeyInput.trim()}
-              className={[
-                'w-full py-2 rounded-xl text-sm font-bold transition-colors',
-                keySaved
-                  ? 'bg-green-600/20 text-green-400 border border-green-500/30'
-                  : 'bg-violet-600 hover:bg-violet-500 text-white disabled:opacity-40',
-              ].join(' ')}
-            >
-              {keySaved ? '✓ Saved' : 'Save Key'}
-            </button>
-            <p className="text-xs text-gray-600 mt-2">Session only — cleared on tab close.</p>
+            {apiKeyInput && (
+              <p className="text-xs text-gray-500 font-mono mb-2">
+                {sanitiseApiKey(apiKeyInput).slice(0, 10)}…{sanitiseApiKey(apiKeyInput).slice(-4)}
+                {!sanitiseApiKey(apiKeyInput).startsWith('sk-ant-') && (
+                  <span className="text-amber-400 ml-1">(unexpected format)</span>
+                )}
+              </p>
+            )}
+            <div className="flex gap-2 mb-2">
+              <button
+                onClick={handleSaveKey}
+                disabled={!apiKeyInput.trim()}
+                className={[
+                  'flex-1 py-2 rounded-xl text-sm font-bold transition-colors',
+                  keySaved
+                    ? 'bg-green-600/20 text-green-400 border border-green-500/30'
+                    : 'bg-violet-600 hover:bg-violet-500 text-white disabled:opacity-40',
+                ].join(' ')}
+              >
+                {keySaved ? '✓ Saved' : 'Save Key'}
+              </button>
+              <button
+                onClick={handleTestKey}
+                disabled={!apiKeyInput.trim() || keyTestState === 'testing'}
+                className="px-3 py-2 rounded-xl text-sm font-bold bg-[#1e1e38] border border-[#3d3d6e] text-gray-300 hover:border-violet-500/50 disabled:opacity-40 transition-colors"
+              >
+                {keyTestState === 'testing' ? '…' : 'Test'}
+              </button>
+            </div>
+            {keyTestState === 'ok' && <p className="text-xs text-green-400 mb-1">✓ Key works!</p>}
+            {keyTestState === 'fail' && <p className="text-xs text-red-400 mb-1">{keyTestError}</p>}
+            <p className="text-xs text-gray-600">Session only — cleared on tab close.</p>
           </div>
         )}
       </div>

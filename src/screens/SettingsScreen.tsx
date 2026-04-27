@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Eye, EyeOff, X, Trash2, LogOut, Cloud, Save } from 'lucide-react'
+import Anthropic from '@anthropic-ai/sdk'
 import { useSettingsStore } from '../store/settingsStore'
 import { sanitiseApiKey } from '../utils/storage'
 import { useTokenTracker } from '../hooks/useTokenTracker'
@@ -28,6 +29,8 @@ export function SettingsScreen({ onClose, onEndCampaign }: SettingsScreenProps) 
   const [apiKeyInput, setApiKeyInput] = useState(settings.getApiKey())
   const [showKey, setShowKey] = useState(false)
   const [keySaved, setKeySaved] = useState(false)
+  const [keyTestState, setKeyTestState] = useState<'idle' | 'testing' | 'ok' | 'fail'>('idle')
+  const [keyTestError, setKeyTestError] = useState('')
   const [supabaseUrl, setSupabaseUrl] = useState(settings.supabaseUrl)
   const [supabaseKey, setSupabaseKey] = useState(settings.supabaseAnonKey)
   const [supaSaved, setSupaSaved] = useState(false)
@@ -35,7 +38,25 @@ export function SettingsScreen({ onClose, onEndCampaign }: SettingsScreenProps) 
   const handleSaveKey = () => {
     settings.setApiKey(sanitiseApiKey(apiKeyInput))
     setKeySaved(true)
+    setKeyTestState('idle')
     setTimeout(() => setKeySaved(false), 2000)
+  }
+
+  const handleTestKey = async () => {
+    const key = sanitiseApiKey(apiKeyInput)
+    if (!key) return
+    setKeyTestState('testing')
+    setKeyTestError('')
+    try {
+      const client = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true })
+      await client.messages.create({ model: 'claude-haiku-4-5-20251001', max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] })
+      setKeyTestState('ok')
+    } catch (err: unknown) {
+      setKeyTestState('fail')
+      const status = err && typeof err === 'object' && 'status' in err ? (err as { status: number }).status : null
+      const msg = err instanceof Error ? err.message : 'Unknown error'
+      setKeyTestError(status === 401 ? 'Invalid key — check it matches what\'s on console.anthropic.com' : msg)
+    }
   }
 
   const handleSaveSupabase = () => {
@@ -76,7 +97,7 @@ export function SettingsScreen({ onClose, onEndCampaign }: SettingsScreenProps) 
                   <input
                     type={showKey ? 'text' : 'password'}
                     value={apiKeyInput}
-                    onChange={(e) => setApiKeyInput(e.target.value)}
+                    onChange={(e) => { setApiKeyInput(e.target.value); setKeyTestState('idle') }}
                     onKeyDown={(e) => e.key === 'Enter' && handleSaveKey()}
                     placeholder="sk-ant-…"
                     className="w-full bg-[#1a1a2e] border border-[#2d2d4e] focus:border-violet-500 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none pr-10 font-mono"
@@ -99,6 +120,31 @@ export function SettingsScreen({ onClose, onEndCampaign }: SettingsScreenProps) 
                   {keySaved ? '✓ Saved' : 'Save'}
                 </Button>
               </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleTestKey}
+                  disabled={!apiKeyInput.trim() || keyTestState === 'testing'}
+                  className="flex-1"
+                >
+                  {keyTestState === 'testing' ? 'Testing…' : 'Test Key'}
+                </Button>
+                {keyTestState === 'ok' && (
+                  <span className="flex items-center text-xs text-green-400 font-medium">✓ Key works</span>
+                )}
+              </div>
+              {keyTestState === 'fail' && (
+                <p className="text-xs text-red-400">{keyTestError}</p>
+              )}
+              {apiKeyInput && (
+                <p className="text-xs text-gray-500 font-mono">
+                  Stored: {sanitiseApiKey(apiKeyInput).slice(0, 10)}…{sanitiseApiKey(apiKeyInput).slice(-4)}
+                  {!sanitiseApiKey(apiKeyInput).startsWith('sk-ant-') && (
+                    <span className="text-amber-400 ml-2">(doesn't look like an Anthropic key)</span>
+                  )}
+                </p>
+              )}
               <p className="text-xs text-gray-600">
                 Key stored in session memory only — cleared on tab close. Never sent anywhere except Anthropic.
               </p>
