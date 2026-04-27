@@ -21,6 +21,7 @@ function MessageBubble({ msg }: { msg: MessageEntry }) {
   const isAssistant = msg.role === 'assistant'
   const [imageUrl, setImageUrl] = useState<string | null>(msg.imageUrl ?? null)
   const [imgLoading, setImgLoading] = useState(false)
+  const [imgError, setImgError] = useState(false)
   const { generateScene } = useImageGen()
   const theme = useGameStore((s) => s.theme)
   const location = useGameStore((s) => s.currentLocation)
@@ -28,6 +29,8 @@ function MessageBubble({ msg }: { msg: MessageEntry }) {
   const handleIllustrate = () => {
     if (!theme) return
     setImgLoading(true)
+    setImgError(false)
+    setImageUrl(null)
     const url = generateScene(location, msg.content, theme)
     setImageUrl(url)
   }
@@ -39,29 +42,33 @@ function MessageBubble({ msg }: { msg: MessageEntry }) {
           <p className="font-serif text-gray-200 leading-relaxed text-sm whitespace-pre-wrap">
             {msg.content}
           </p>
+          {imgLoading && (
+            <div className="mt-3 w-full max-w-xs h-48 rounded-lg border border-[#2d2d4e] bg-[#1a1a2e] animate-pulse flex items-center justify-center">
+              <span className="text-xs text-gray-500">Generating illustration…</span>
+            </div>
+          )}
           {imageUrl && (
-            <div className="mt-3 rounded-lg overflow-hidden border border-[#2d2d4e]">
+            <div className={`mt-3 rounded-lg overflow-hidden border border-[#2d2d4e] ${imgLoading ? 'hidden' : ''}`}>
               <img
                 src={imageUrl}
                 alt="Scene illustration"
                 className="w-full max-w-xs rounded-lg"
                 onLoad={() => setImgLoading(false)}
-                onError={() => setImgLoading(false)}
+                onError={() => { setImgLoading(false); setImgError(true); setImageUrl(null) }}
               />
             </div>
           )}
           <div className="flex items-center gap-3 mt-2">
             <span className="text-xs text-gray-600">{timeAgo(msg.timestamp)}</span>
-            {!imageUrl && (
+            {!imgLoading && !imageUrl && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleIllustrate}
-                loading={imgLoading}
                 className="text-xs text-gray-500 hover:text-gray-300 px-2 py-0.5 h-auto"
               >
                 <Image size={11} />
-                Illustrate scene
+                {imgError ? 'Retry illustration' : 'Illustrate scene'}
               </Button>
             )}
           </div>
