@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Settings, Swords, Cloud, CloudOff, House, MessageSquare, UserRound, Compass } from 'lucide-react'
+import { Settings, Swords, Cloud, CloudOff, House, MessageSquare, UserRound, Compass, Key } from 'lucide-react'
 import { useGameStore } from '../store/gameStore'
 import { useSettingsStore } from '../store/settingsStore'
 import { useClaude } from '../hooks/useClaude'
@@ -133,7 +133,8 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
   const lastReadRef = useRef(0)
 
   const game = useGameStore()
-  const { kidsMode } = useSettingsStore()
+  const { kidsMode, getApiKey } = useSettingsStore()
+  const [hasApiKey, setHasApiKey] = useState(() => !!getApiKey())
   const { sendMessage, sendNarration, isLoading, error } = useClaude()
   const { isConfigured, isSaving, saveCurrentCampaign } = useSupabase()
 
@@ -277,6 +278,21 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
       game.appendMessage('assistant', '⚔️ Your previous battle was interrupted. You regroup and continue.')
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Detect API key disappearing (sessionStorage cleared when tab resumes on mobile)
+  useEffect(() => {
+    const check = () => {
+      const keyPresent = !!getApiKey()
+      setHasApiKey(keyPresent)
+      if (!keyPresent) setShowSettings(true)
+    }
+    document.addEventListener('visibilitychange', check)
+    window.addEventListener('focus', check)
+    return () => {
+      document.removeEventListener('visibilitychange', check)
+      window.removeEventListener('focus', check)
+    }
+  }, [getApiKey])
 
   // Auto-send opening scene when adventure begins fresh
   useEffect(() => {
@@ -478,6 +494,16 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
     </div>
   ) : null
 
+  const noKeyBanner = !hasApiKey ? (
+    <button
+      onClick={() => setShowSettings(true)}
+      className="mx-4 mt-2 flex items-center gap-2 px-4 py-2.5 bg-amber-900/30 border border-amber-600/40 rounded-xl text-amber-300 text-sm shrink-0 w-[calc(100%-2rem)] text-left hover:bg-amber-900/50 transition-colors"
+    >
+      <Key size={14} className="shrink-0" />
+      <span>API key missing — tap to re-enter and continue your adventure</span>
+    </button>
+  ) : null
+
   const errorBanner = error ? (
     <div className="mx-4 mt-3 px-4 py-2.5 bg-red-900/30 border border-red-800/40 rounded-xl text-red-300 text-sm shrink-0">
       {error}
@@ -552,6 +578,7 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
           {/* STORY TAB */}
           {mobileTab === 'chat' && (
             <div className="h-full flex flex-col">
+              {noKeyBanner}
               {errorBanner}
               <StoryPanel messages={game.messages} />
               {!inCombat && <QuickActions actions={quickActions} onAction={handleQuickAction} isLoading={isLoading} />}
@@ -643,6 +670,7 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
 
         {/* Center — Story */}
         <main className="flex-1 flex flex-col min-w-0">
+          {noKeyBanner}
           {errorBanner}
           <StoryPanel messages={game.messages} />
           {!inCombat && <QuickActions actions={quickActions} onAction={handleQuickAction} isLoading={isLoading} />}
@@ -688,7 +716,7 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
       {/* Settings panel */}
       {showSettings && (
         <SettingsScreen
-          onClose={() => setShowSettings(false)}
+          onClose={() => { setShowSettings(false); setHasApiKey(!!getApiKey()) }}
           onEndCampaign={() => { setShowSettings(false); onEndCampaign() }}
         />
       )}

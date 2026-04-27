@@ -92,8 +92,7 @@ export const useGameStore = create<GameStore>()(
         const entry = { id, role, content, timestamp: Date.now() }
         set((state) => {
           const messages = [...state.messages, entry]
-          // Cap at 40 messages (20 pairs)
-          const trimmed = messages.length > 40 ? messages.slice(messages.length - 40) : messages
+          const trimmed = messages.length > 100 ? messages.slice(messages.length - 100) : messages
           return { messages: trimmed, updatedAt: Date.now() }
         })
       },
