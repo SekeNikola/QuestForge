@@ -11,18 +11,33 @@ const THEME_LABELS: Record<Theme, string> = {
   horror_manor: 'gothic horror',
 }
 
+const SCENE_STYLE: Record<Theme, string> = {
+  dark_fantasy:  'photorealistic, hyperdetailed, cinematic photography, 8k, volumetric fog, dramatic chiaroscuro lighting, stone textures, dark medieval atmosphere',
+  lego_universe: 'Lego 3D render, ultra-detailed plastic bricks, vibrant colours, studio lighting, raytracing, toy photography',
+  space_odyssey: 'photorealistic sci-fi, hyperdetailed, cinematic photography, 8k, holographic panels, neon glow, metallic surfaces, cosmic backdrop',
+  pirate_seas:   'photorealistic, hyperdetailed, cinematic photography, 8k, golden hour sunlight, ocean spray, weathered wood, dramatic sky',
+  horror_manor:  'photorealistic, hyperdetailed, cinematic photography, 8k, moonlit fog, candlelight, crumbling stone, oppressive shadows',
+}
+
+const PORTRAIT_STYLE: Record<Theme, string> = {
+  dark_fantasy:  'photorealistic portrait, professional studio lighting, 8k, intricate armour and costume detail, dark fantasy aesthetic',
+  lego_universe: 'Lego minifigure character portrait, ultra-detailed, studio lighting, raytracing, toy photography',
+  space_odyssey: 'photorealistic portrait, 8k, futuristic costume, neon accent lighting, sci-fi aesthetic',
+  pirate_seas:   'photorealistic portrait, 8k, natural sidelight, weathered skin, period-accurate pirate costume',
+  horror_manor:  'photorealistic portrait, 8k, candlelit, dramatic shadows, gothic aesthetic',
+}
+
 function buildPortraitUrl(character: Character, theme: Theme, seed: number): string {
   const backstoryExcerpt = character.backstory.split('.')[0]?.substring(0, 60) ?? ''
-  const prompt = `RPG character portrait, ${character.class}, ${THEME_LABELS[theme]} setting, ${backstoryExcerpt}, dramatic lighting, detailed, painterly fantasy art style, no text`
+  const prompt = `${PORTRAIT_STYLE[theme]}, ${character.class}, ${backstoryExcerpt}, sharp focus, no text, no UI`
   return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=512&nologo=true&seed=${seed}&model=flux`
 }
 
 function buildSceneUrl(location: string, narration: string, theme: Theme, seed: number): string {
-  // Use the opening sentences — they set the visual scene, not the last sentence
   const sentences = narration.split(/(?<=[.!?])\s+/).filter(Boolean)
-  const sceneDesc = sentences.slice(0, 3).join(' ').substring(0, 200)
-  const prompt = `${THEME_LABELS[theme]}, ${location}, ${sceneDesc}, dramatic illustration, cinematic lighting, detailed environment, no characters, no UI, no text`
-  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=512&nologo=true&seed=${seed}&model=flux`
+  const sceneDesc = sentences.slice(0, 3).join(' ').substring(0, 180)
+  const prompt = `${SCENE_STYLE[theme]}, ${location}, ${sceneDesc}, no people, no characters, no text, no UI, sharp focus`
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=896&height=512&nologo=true&seed=${seed}&model=flux`
 }
 
 export function useImageGen() {

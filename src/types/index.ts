@@ -164,7 +164,7 @@ export interface SessionStats {
 
 export interface ApiSettings {
   // apiKey is NOT stored here — kept in sessionStorage only
-  model: 'claude-sonnet-4-5'
+  model: 'claude-sonnet-4-6'
   responseLength: ResponseLength
   maxTokensMap: {
     compact: number
