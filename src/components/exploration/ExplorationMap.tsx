@@ -27,10 +27,47 @@ const THEME_STYLE: Record<Theme, string> = {
   lego_universe: 'lego minifig character, colorful, plastic toy style',
 }
 
+const OBJECT_STYLE: Record<Theme, string> = {
+  dark_fantasy:  'photorealistic medieval fantasy object, dark stone background, dramatic lighting, intricate detail',
+  lego_universe: 'lego brick object, colorful plastic, studio lighting, clean dark background',
+  space_odyssey: 'sci-fi futuristic object, metallic, neon glow, dark space background',
+  pirate_seas:   'age of sail pirate object, weathered wood and metal, natural golden light',
+  horror_manor:  'gothic Victorian horror object, decayed, eerie candlelit, dark background',
+}
+
+// Deterministic int hash of a string — used for stable Pollinations seeds
+function strHash(s: string): number {
+  return s.toLowerCase().split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 99999
+}
+
 function npcPortraitUrl(name: string, theme: Theme): string {
   const style = THEME_STYLE[theme]
-  const seed = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 99999
+  const seed = strHash(name)
   return `https://image.pollinations.ai/prompt/${encodeURIComponent(`${name}, ${style}, face close-up, no background, square crop`)}?width=80&height=80&nologo=true&seed=${seed}&model=flux`
+}
+
+function objectAvatarUrl(name: string, theme: Theme): string {
+  const style = OBJECT_STYLE[theme]
+  const seed = strHash(name)
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(`${name}, ${style}, isolated object, no people, no text, square crop`)}?width=80&height=80&nologo=true&seed=${seed}&model=flux`
+}
+
+// Session-persistent cache: tracks object avatars confirmed to have loaded successfully.
+// Key format: "theme:normalizedName"
+function loadAvatarCache(): Set<string> {
+  try {
+    const raw = sessionStorage.getItem('qf_obj_avatars')
+    return new Set(raw ? (JSON.parse(raw) as string[]) : [])
+  } catch {
+    return new Set()
+  }
+}
+const confirmedAvatars: Set<string> = loadAvatarCache()
+
+function saveAvatarCache() {
+  try {
+    sessionStorage.setItem('qf_obj_avatars', JSON.stringify([...confirmedAvatars]))
+  } catch { /* quota exceeded — ignore */ }
 }
 
 function objPos(obj: SceneObject): { x: number; y: number } | null {
@@ -96,6 +133,84 @@ function NpcToken({ obj, theme, cell }: NpcTokenProps) {
         {showFallback && (
           <div className="absolute inset-0 flex items-center justify-center">
             <span style={{ fontSize: cell * 0.52, lineHeight: 1 }}>{obj.icon || '👤'}</span>
+          </div>
+        )}
+      </div>
+    </Tooltip>
+  )
+}
+
+interface ObjectTokenProps {
+  obj: SceneObject
+  theme: Theme
+  cell: number
+}
+function ObjectToken({ obj, theme, cell }: ObjectTokenProps) {
+  const cacheKey = `${theme}:${obj.name.toLowerCase().trim()}`
+  const alreadyConfirmed = confirmedAvatars.has(cacheKey)
+  const [imgLoaded, setImgLoaded] = useState(alreadyConfirmed)
+  const [imgError, setImgError] = useState(false)
+  const url = objectAvatarUrl(obj.name, theme)
+  const showFallback = !imgLoaded || imgError
+
+  const handleLoad = () => {
+    setImgLoaded(true)
+    if (!confirmedAvatars.has(cacheKey)) {
+      confirmedAvatars.add(cacheKey)
+      saveAvatarCache()
+    }
+  }
+
+  const borderColor = obj.interacted
+    ? 'rgba(80,80,100,0.35)'
+    : obj.type === 'exit'
+    ? 'rgba(80,140,220,0.4)'
+    : 'rgba(120,80,200,0.35)'
+
+  const glowColor = obj.type === 'exit'
+    ? '0 0 8px rgba(80,140,220,0.2)'
+    : '0 0 8px rgba(120,80,200,0.2)'
+
+  return (
+    <Tooltip text={`${obj.name}${obj.type === 'exit' ? ' (exit)' : ''}`} className="absolute inset-0">
+      <div
+        className="absolute inset-1.5 rounded-lg overflow-hidden cursor-default"
+        style={{
+          background: obj.interacted
+            ? 'rgba(40,40,60,0.65)'
+            : obj.type === 'exit'
+            ? 'rgba(10,20,40,0.75)'
+            : 'rgba(15,10,30,0.75)',
+          border: `1px solid ${borderColor}`,
+          boxShadow: obj.interacted ? 'none' : glowColor,
+        }}
+      >
+        {!imgError && (
+          <img
+            src={url}
+            alt={obj.name}
+            className={`w-full h-full object-cover transition-opacity duration-500 ${
+              imgLoaded
+                ? obj.interacted ? 'opacity-30 grayscale' : 'opacity-85'
+                : 'opacity-0'
+            }`}
+            onLoad={handleLoad}
+            onError={() => setImgError(true)}
+          />
+        )}
+        {showFallback && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span
+              className="select-none"
+              style={{
+                fontSize: Math.max(13, cell * 0.45),
+                filter: obj.interacted
+                  ? 'grayscale(1) opacity(0.35)'
+                  : 'drop-shadow(0 1px 4px rgba(0,0,0,0.9))',
+              }}
+            >
+              {obj.icon || '❓'}
+            </span>
           </div>
         )}
       </div>
@@ -213,39 +328,7 @@ export function ExplorationMap({
               {isNpc ? (
                 <NpcToken obj={obj} theme={theme} cell={CELL} />
               ) : (
-                <Tooltip text={`${obj.name}${obj.type === 'exit' ? ' (exit)' : ''}`} className="absolute inset-0">
-                  <div
-                    className="absolute inset-1.5 rounded-lg flex items-center justify-center cursor-default"
-                    style={{
-                      background: obj.interacted
-                        ? 'rgba(40,40,60,0.65)'
-                        : obj.type === 'exit'
-                        ? 'rgba(10,20,40,0.75)'
-                        : 'rgba(15,10,30,0.75)',
-                      border: obj.interacted
-                        ? '1px solid rgba(80,80,100,0.35)'
-                        : obj.type === 'exit'
-                        ? '1px solid rgba(80,140,220,0.4)'
-                        : '1px solid rgba(120,80,200,0.35)',
-                      boxShadow: obj.interacted ? 'none'
-                        : obj.type === 'exit'
-                        ? '0 0 8px rgba(80,140,220,0.2)'
-                        : '0 0 8px rgba(120,80,200,0.2)',
-                    }}
-                  >
-                    <span
-                      className="select-none"
-                      style={{
-                        fontSize: 17,
-                        filter: obj.interacted
-                          ? 'grayscale(1) opacity(0.35)'
-                          : 'drop-shadow(0 1px 4px rgba(0,0,0,0.9))',
-                      }}
-                    >
-                      {obj.icon || '❓'}
-                    </span>
-                  </div>
-                </Tooltip>
+                <ObjectToken obj={obj} theme={theme} cell={CELL} />
               )}
             </div>
           )
