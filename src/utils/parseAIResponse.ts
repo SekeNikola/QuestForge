@@ -49,11 +49,18 @@ export function parseAIResponse(raw: string): ParsedAIResponse {
 
   // ─── [ACTIONS: a | b | c] ─────────────────────────────────────────────────
   let actions: string[] = []
-  const actionsMatch = text.match(/\[ACTIONS:\s*([^\]]+)\]/i)
-  if (actionsMatch) {
-    actions = actionsMatch[1]!.split('|').map(s => s.trim()).filter(Boolean).slice(0, 3)
-    text = text.replace(/\[ACTIONS:[^\]]*\]/gi, '')
+  // Complete tag: [ACTIONS: foo | bar | baz]
+  const actionsComplete = text.match(/\[ACTIONS:\s*([^\]]+)\]/i)
+  // Truncated tag: [ACTIONS: foo | bar   (no closing ], hit max_tokens)
+  const actionsTruncated = !actionsComplete ? text.match(/\[ACTIONS:\s*(.+)/is) : null
+  const actionsRaw = actionsComplete?.[1] ?? actionsTruncated?.[1] ?? ''
+  if (actionsRaw) {
+    actions = actionsRaw.split('|').map(s => s.trim()).filter(s => s.length > 2 && s.length < 80).slice(0, 3)
   }
+  // Always strip ALL [ACTIONS:...] from narrative — complete or truncated
+  text = text
+    .replace(/\[ACTIONS:[^\]]*\]/gi, '')   // complete tags
+    .replace(/\[ACTIONS:[^\n]*/gi, '')      // truncated tags (to end of line)
 
   // ─── [MEMORY_UPDATE: {...}] ────────────────────────────────────────────────
   let memoryPatch: ParsedAIResponse['memoryPatch'] = null
@@ -152,7 +159,11 @@ export function parseAIResponse(raw: string): ParsedAIResponse {
   }
 
   // ─── Clean up any remaining stray brackets from malformed tags ────────────
-  const narrative = text.replace(/\[\w+:[^\]]{0,20}$/gm, '').trim()
+  const narrative = text
+    .replace(/\[\w+:[^\]]{0,20}$/gm, '')   // truncated [TAG: at end of line
+    .replace(/\[ACTIONS:[^\]]*\]?/gi, '')   // any residual [ACTIONS:...] fragments
+    .replace(/^\s*[{}]\s*$/gm, '')          // lone { or } lines (JSON bleed)
+    .trim()
 
   return { narrative, actions, memoryPatch, xpGained, combatEntry, combatStart, skillCheck }
 }

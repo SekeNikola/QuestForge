@@ -17,6 +17,13 @@ function timeAgo(ts: number): string {
   return `${Math.floor(diff / 86400)}d ago`
 }
 
+function cleanContent(content: string): string {
+  return content
+    .replace(/\[ACTIONS:[^\]]*\]?/gi, '')
+    .replace(/^\s*[{}]\s*$/gm, '')
+    .trim()
+}
+
 function MessageBubble({ msg }: { msg: MessageEntry }) {
   const isAssistant = msg.role === 'assistant'
   const [imageUrl, setImageUrl] = useState<string | null>(msg.imageUrl ?? null)
@@ -40,7 +47,7 @@ function MessageBubble({ msg }: { msg: MessageEntry }) {
       {isAssistant ? (
         <div className="max-w-full">
           <p className="font-serif text-gray-200 leading-relaxed text-sm whitespace-pre-wrap">
-            {msg.content}
+            {cleanContent(msg.content)}
           </p>
           {imgLoading && (
             <div className="mt-3 w-full max-w-xs h-48 rounded-lg border border-[#2d2d4e] bg-[#1a1a2e] animate-pulse flex items-center justify-center">
