@@ -239,6 +239,8 @@ export interface ParsedAIResponse {
   xpGained: number
   combatEntry: Omit<CombatEntry, 'id' | 'timestamp'> | null
   combatStart: boolean
+  combatEnemyCount: number  // from [COMBAT_START: N], 0 if unspecified
+  combatEnd: boolean        // from [COMBAT_END] — flee, surrender, or escape
   skillCheck: SkillCheck | null
 }
 

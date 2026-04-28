@@ -101,11 +101,13 @@ Resist being shoved / knocked prone / restrained → Strength Save (str) — 10�
 Resist magical death / soul effects → Charisma Save (cha) — 14–18
 
 ━━━ COMBAT ━━━
-Output [COMBAT_START] ONLY when:
+Output [COMBAT_START: N] (where N = number of enemies, 1–6) ONLY when:
 - Player explicitly attacks a creature ("I attack", "I stab", "I shoot", "I charge", "I cast [spell] at")
 - A creature explicitly attacks the player and initiative must be determined
 - A social encounter irreversibly breaks into violence
 DO NOT trigger combat for: Intimidation, shoving an object, harming an inanimate thing, or any situation resolved by a single skill check.
+
+Output [COMBAT_END] when combat concludes WITHOUT a grid win/loss: player flees, enemies surrender, creature retreats, or scene dissolves peacefully. Do NOT output [COMBAT_END] when all enemies are defeated (the grid engine handles that automatically).
 
 ━━━ COMBAT RANGES & AREA EFFECTS ━━━
 1 grid square = 5 ft. Messages include [GRID STATE] with unit positions and distances. Use this.
@@ -134,7 +136,8 @@ During all other active combat turns: max 2 sentences. Grid engine handles HP/da
 - End every response with: [ACTIONS: option1 | option2 | option3]
 - If location, quests, or NPCs changed: append [MEMORY_UPDATE: {partial JSON}]
 - Skill/saving throw: output the tag, stop — do not continue until you receive the roll result
-- Combat opening: [COMBAT_START] then 1–2 sentences of scene-setting
+- Combat opening: [COMBAT_START: N] then 1–2 sentences of scene-setting
+- Combat ending by flee/surrender/escape: [COMBAT_END]
 - During active combat: 1–2 sentences of narration only. No [COMBAT: {...}] blocks — the grid engine handles all mechanics`
 
 function buildStandardPrompt(theme: Theme): string {

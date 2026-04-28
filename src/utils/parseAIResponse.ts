@@ -43,9 +43,16 @@ function stripTaggedBlock(text: string, tag: string): { extracted: string | null
 export function parseAIResponse(raw: string): ParsedAIResponse {
   let text = raw
 
-  // ─── [COMBAT_START] ───────────────────────────────────────────────────────
-  const combatStart = /\[COMBAT_START\]/i.test(text)
-  text = text.replace(/\[COMBAT_START\]/gi, '')
+  // ─── [COMBAT_START: N] ────────────────────────────────────────────────────
+  // Supports optional enemy count: [COMBAT_START] or [COMBAT_START: 6]
+  const combatStartMatch = text.match(/\[COMBAT_START(?::\s*(\d+))?\]/i)
+  const combatStart = !!combatStartMatch
+  const combatEnemyCount = combatStart ? (parseInt(combatStartMatch![1] ?? '0', 10) || 0) : 0
+  text = text.replace(/\[COMBAT_START[^\]]*\]/gi, '')
+
+  // ─── [COMBAT_END] ─────────────────────────────────────────────────────────
+  const combatEnd = /\[COMBAT_END\]/i.test(text)
+  text = text.replace(/\[COMBAT_END\]/gi, '')
 
   // ─── [ACTIONS: a | b | c] ─────────────────────────────────────────────────
   let actions: string[] = []
@@ -165,5 +172,5 @@ export function parseAIResponse(raw: string): ParsedAIResponse {
     .replace(/^\s*[{}]\s*$/gm, '')          // lone { or } lines (JSON bleed)
     .trim()
 
-  return { narrative, actions, memoryPatch, xpGained, combatEntry, combatStart, skillCheck }
+  return { narrative, actions, memoryPatch, xpGained, combatEntry, combatStart, combatEnemyCount, combatEnd, skillCheck }
 }

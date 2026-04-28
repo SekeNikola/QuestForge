@@ -183,6 +183,7 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
     validMoves,
     validTargets,
     initGrid,
+    forfeit,
     handleCellClick,
     handleEnemyClick,
     handleDodge,
@@ -305,11 +306,12 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
     return () => clearTimeout(t)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleSend = async (text: string) => {
+  const handleSend = async (text: string, { skipCombatPrefix = false } = {}) => {
     setQuickActions([])
     try {
-      const gridCtx = inCombat ? `${buildGridContext(units, obstacles)} ` : ''
-      const messageText = inCombat
+      const activeInCombat = !skipCombatPrefix && inCombat
+      const gridCtx = activeInCombat ? `${buildGridContext(units, obstacles)} ` : ''
+      const messageText = activeInCombat
         ? `[COMBAT ACTIVE] ${gridCtx}${text}`
         : text
       const rawResponse = await sendMessage(messageText)
@@ -342,9 +344,13 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
         return
       }
 
+      // ── Combat start ─────────────────────────────────────────────────────
       if (parsed.combatStart && !inCombat) {
         const theme = game.theme ?? 'dark_fantasy'
-        const enemyCount = Math.max(1, Math.min(game.players.length + 1, 3))
+        // Use AI-specified count; fall back to a range based on party size
+        const aiCount = parsed.combatEnemyCount
+        const fallback = Math.max(2, Math.min(game.players.length + 2, 5))
+        const enemyCount = aiCount > 0 ? Math.min(aiCount, 6) : fallback
         const enemyCombatants = generateEnemies(theme, enemyCount)
         const playerCombatants: Combatant[] = game.players.map(p => ({
           id: p.id,
@@ -356,6 +362,8 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
           initiative: Math.floor(Math.random() * 20) + 1,
           isDefeated: false,
         }))
+        // Clear stale sceneObjects so old enemy names don't bleed into the legend
+        game.setSceneObjects([])
         game.startCombat(enemyCombatants)
         initGrid([...playerCombatants, ...enemyCombatants])
         // Reuse cached exploration map for combat (same location)
@@ -366,6 +374,12 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
         setMapUrl(locationMapCache.current.get(combatMapKey)!)
         setRolls([])
         setCombatLog([])
+      }
+
+      // ── Combat end (flee / surrender / escape) ───────────────────────────
+      if (parsed.combatEnd && inCombat) {
+        game.endCombat()
+        forfeit()
       }
     } catch {
       // error shown via useClaude error state
@@ -423,7 +437,7 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
               <span className={`w-2 h-2 rounded-full ${playerAttacked ? 'bg-gray-700' : 'bg-orange-500'}`} />
               <span className={playerAttacked ? 'line-through text-gray-700' : 'text-gray-400'}>Action</span>
             </div>
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-3 gap-1.5">
               <button
                 onClick={handleDodge}
                 disabled={playerAttacked}
@@ -441,6 +455,16 @@ export function AdventureScreen({ onEndCampaign }: AdventureScreenProps) {
                 className="flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium bg-[#1a1a2e] hover:bg-[#252540] border border-[#2d2d4e] text-gray-500 hover:text-gray-300 rounded-xl transition-colors"
               >
                 <span>→</span><span>End Turn</span>
+              </button>
+              <button
+                onClick={() => {
+                  game.endCombat()
+                  forfeit()
+                  handleSend('I flee from the battle!', { skipCombatPrefix: true })
+                }}
+                className="flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium bg-[#1a1a2e] hover:bg-red-900/30 border border-[#2d2d4e] hover:border-red-800/60 text-gray-500 hover:text-red-400 rounded-xl transition-colors"
+              >
+                <span>🏃</span><span>Flee</span>
               </button>
             </div>
             {validTargets.length > 0 && !playerAttacked && (

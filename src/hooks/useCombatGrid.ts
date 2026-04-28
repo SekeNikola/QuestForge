@@ -151,11 +151,30 @@ export function useCombatGrid(
   }, [])
 
   const initGrid = useCallback((combatants: Combatant[]) => {
+    // Randomly pick starting corners so the layout isn't always the same.
+    // 0 = players bottom-left, enemies top-right  (classic)
+    // 1 = players bottom-right, enemies top-left
+    // 2 = players top-left, enemies bottom-right
+    // 3 = players top-right, enemies bottom-left
+    const corner = Math.floor(Math.random() * 4)
     let pi = 0, ei = 0
     const placed: GridUnit[] = combatants.map(c => {
-      const pos: GridPos = c.isPlayer
-        ? { x: pi % 2, y: GRID_SIZE - 1 - Math.floor(pi++ / 2) }
-        : { x: GRID_SIZE - 1 - (ei % 2), y: Math.floor(ei++ / 2) }
+      let pos: GridPos
+      if (c.isPlayer) {
+        const col = pi % 2, row = Math.floor(pi / 2)
+        if (corner === 0) pos = { x: col, y: GRID_SIZE - 1 - row }
+        else if (corner === 1) pos = { x: GRID_SIZE - 1 - col, y: GRID_SIZE - 1 - row }
+        else if (corner === 2) pos = { x: col, y: row }
+        else pos = { x: GRID_SIZE - 1 - col, y: row }
+        pi++
+      } else {
+        const col = ei % 2, row = Math.floor(ei / 2)
+        if (corner === 0) pos = { x: GRID_SIZE - 1 - col, y: row }
+        else if (corner === 1) pos = { x: col, y: row }
+        else if (corner === 2) pos = { x: GRID_SIZE - 1 - col, y: GRID_SIZE - 1 - row }
+        else pos = { x: col, y: GRID_SIZE - 1 - row }
+        ei++
+      }
       return { id: c.id, name: c.name, isPlayer: c.isPlayer, pos, hp: c.hp, maxHp: c.maxHp, speed: c.isPlayer ? 4 : 3, atkRange: 1 }
     })
     const obs = generateObstacles()
@@ -167,6 +186,13 @@ export function useCombatGrid(
     setPhase('player')
     refreshHighlights(placed, false, false)
   }, [setUnits, refreshHighlights])
+
+  // Force-end the grid without a natural win/loss (flee, surrender, etc.)
+  const forfeit = useCallback(() => {
+    setPhase('done')
+    setValidMoves([])
+    setValidTargets([])
+  }, [])
 
   // Enemy AI
   const runEnemyTurn = useCallback(() => {
@@ -309,6 +335,6 @@ export function useCombatGrid(
   return {
     units, obstacles, phase, playerMoved, playerAttacked, playerDodging,
     validMoves, validTargets,
-    initGrid, handleCellClick, handleEnemyClick, handleDodge, endPlayerTurn,
+    initGrid, forfeit, handleCellClick, handleEnemyClick, handleDodge, endPlayerTurn,
   }
 }
