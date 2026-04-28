@@ -161,7 +161,6 @@ function CharacterCard({ character }: { character: Character }) {
   const prof = proficiencyBonus(character.level)
   const dexMod = Math.floor((character.stats.dex - 10) / 2)
   const gold = parseGold(character.inventory)
-  const nonGoldInventory = character.inventory.filter(i => !isGoldItem(i))
   const spells = abilities.filter(a => a.type === 'spell' || a.type === 'cantrip')
   const nonSpellAbilities = abilities.filter(a => a.type !== 'spell' && a.type !== 'cantrip')
 

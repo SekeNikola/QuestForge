@@ -3,14 +3,6 @@ import type { Character, Theme } from '../types/index'
 
 const PLACEHOLDER_SVG = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'%3E%3Crect width='256' height='256' fill='%231a1a2e'/%3E%3Ccircle cx='128' cy='96' r='40' fill='%232d2d4e'/%3E%3Cellipse cx='128' cy='200' rx='64' ry='48' fill='%232d2d4e'/%3E%3C/svg%3E`
 
-const THEME_LABELS: Record<Theme, string> = {
-  dark_fantasy: 'dark medieval fantasy',
-  lego_universe: 'Lego brick world, cartoon style',
-  space_odyssey: 'futuristic sci-fi',
-  pirate_seas: 'swashbuckling pirate',
-  horror_manor: 'gothic horror',
-}
-
 const SCENE_STYLE: Record<Theme, string> = {
   dark_fantasy:  'photorealistic, hyperdetailed, cinematic photography, 8k, volumetric fog, dramatic chiaroscuro lighting, stone textures, dark medieval atmosphere',
   lego_universe: 'Lego 3D render, ultra-detailed plastic bricks, vibrant colours, studio lighting, raytracing, toy photography',
